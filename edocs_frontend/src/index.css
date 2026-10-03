@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --color-ink: #0a0a0a;
+  --color-ink-2: #3d4350;
+  --color-muted: #6b7280;
+  --color-paper: #ffffff;
+  --color-canvas: #f6f7f9;
+  --color-well: #eef1f5;
+  --color-line: #e2e6ec;
+  --color-line-strong: #cfd5de;
+  --color-nav: #dce6f8;
+
+  --color-seal: #0f8a5f;
+  --color-seal-soft: #e3f4ec;
+  --color-amber: #c2660a;
+  --color-amber-soft: #fdf1e2;
+  --color-alert: #b42318;
+  --color-alert-soft: #fdecea;
+  --color-info: #1d5fbf;
+  --color-info-soft: #e5eefb;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-canvas text-ink font-sans;
+    font-feature-settings: "ss02";
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-info);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-nav);
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-line bg-paper;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45;
+  }
+  .btn-primary {
+    @apply bg-ink text-white hover:bg-ink-2;
+  }
+  .btn-seal {
+    @apply bg-seal text-white hover:bg-[#0b7550];
+  }
+  .btn-ghost {
+    @apply border border-line bg-paper text-ink hover:bg-well;
+  }
+  .btn-quiet {
+    @apply bg-well text-ink hover:bg-line;
+  }
+  .field {
+    @apply w-full rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted/80 focus:border-ink focus:outline-none;
+  }
+  .hash {
+    @apply font-mono text-[0.8125rem] tracking-tight;
+  }
+}
+
+/* The one orchestrated motion: risk bars fill in on first paint. */
+@keyframes fill-in {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.bar-fill {
+  transform-origin: left;
+  animation: fill-in 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Document body rendered from stored HTML (editor + signing viewer). */
+.doc-body h2 {
+  margin-top: 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+.doc-body h3 {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.doc-body ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-left: 1.25rem;
+  list-style: disc;
+  font-size: 0.9375rem;
+}
+.doc-body strong {
+  color: var(--color-ink);
+}
+.doc-body blockquote {
+  border-left: 2px solid var(--color-line-strong);
+  padding-left: 1rem;
+}
+.doc-body hr {
+  border-color: var(--color-line);
+}
+.doc-body del {
+  background: color-mix(in srgb, var(--color-alert) 10%, transparent);
+  color: var(--color-alert);
+}
+.doc-body ins {
+  background: color-mix(in srgb, var(--color-seal) 12%, transparent);
+  color: var(--color-seal);
+  text-decoration: none;
+}
+.doc-body.hide-redlines del {
+  display: none;
+}
+.doc-body.hide-redlines ins {
+  background: none;
+  color: inherit;
+}
+
+@media print {
+  footer, aside, .sticky, nav, dialog { display: none !important; }
+  body { background: #fff; }
+  .card { border: 0; }
+}
