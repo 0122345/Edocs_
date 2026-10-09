@@ -79,7 +79,7 @@ In the `dev` profile, signing codes are also copied to the in-app bell (`OTP_ECH
 | `JWT_SECRET` | dev value | HS256 signing key, at least 32 bytes. **Set in production.** |
 | `JWT_TTL` | `PT2H` | Access-token lifetime |
 | `MASTER_KEY` | dev value | Base64 AES-256 key-encryption key. **Set in production.** |
-| `GOOGLE_CLIENT_ID/SECRET`, `MICROSOFT_CLIENT_ID/SECRET` | placeholders | OAuth2 login providers. Redirect URI: `{base}/api/login/oauth2/code/{google\|microsoft}` |
+| `GOOGLE_CLIENT_ID/SECRET`, `MICROSOFT_CLIENT_ID/SECRET` | placeholders | OAuth2 login providers. Redirect URI: `{base}/api/login/oauth2/code/{google\|microsoft}`. Only verified emails link to members (Google `email_verified`; Microsoft needs the `xms_edov` optional claim). MFA members need the IdP to assert `amr=mfa`. |
 | `FRONTEND_URL`, `CORS_ORIGINS` | `http://localhost:5173` | OAuth redirect target, allowed origins |
 | `SEED_DEMO_DATA` | `true` | Seed the demo workspace into an empty database |
 

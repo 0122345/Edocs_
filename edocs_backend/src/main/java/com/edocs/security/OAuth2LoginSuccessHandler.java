@@ -3,6 +3,7 @@ package com.edocs.security;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -32,14 +33,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
             throws IOException {
         OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
-        String email = firstNonBlank(oauthUser.getAttribute("email"), oauthUser.getAttribute("preferred_username"), oauthUser.getAttribute("upn"));
+        // Only a provider-verified email links to a member; preferred_username/upn are user-editable and never trusted.
+        String email = verified(oauthUser) ? oauthUser.getAttribute("email") : null;
+        boolean idpMfa = oauthUser.getAttribute("amr") instanceof Collection<?> amr && amr.contains("mfa");
         HttpSession session = request.getSession(false);
         if (session != null) {
             session.invalidate();
         }
         String target;
         try {
-            String token = auth.loginWithProvider(email).token();
+            String token = auth.loginWithProvider(email, idpMfa).token();
             // The token travels in the URL fragment, which browsers never send to servers or put in Referer headers.
             target = props.frontendUrl() + "/login#token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
         } catch (RuntimeException ex) {
@@ -48,12 +51,12 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         response.sendRedirect(target);
     }
 
-    private static String firstNonBlank(Object... values) {
-        for (Object v : values) {
-            if (v instanceof String s && !s.isBlank()) {
-                return s;
-            }
-        }
-        return null;
+    // Google sends email_verified; Microsoft sends xms_edov when the email domain is verified for the tenant.
+    private static boolean verified(OAuth2User user) {
+        return isTrue(user.getAttribute("email_verified")) || isTrue(user.getAttribute("xms_edov"));
+    }
+
+    private static boolean isTrue(Object value) {
+        return Boolean.TRUE.equals(value) || "true".equalsIgnoreCase(String.valueOf(value)) || "1".equals(String.valueOf(value));
     }
 }

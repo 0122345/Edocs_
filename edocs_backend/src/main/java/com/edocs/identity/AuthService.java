@@ -116,12 +116,16 @@ public class AuthService {
 
     // Called after a successful OAuth2 authorization-code login; only invited members may sign in.
     @Transactional
-    public SessionDto loginWithProvider(String email) {
+    public SessionDto loginWithProvider(String email, boolean idpMfa) {
         if (email == null) {
-            throw ApiException.unauthorized("The identity provider did not share an email address.");
+            throw ApiException.unauthorized("The identity provider did not share a verified email address.");
         }
         User user = users.findByEmail(email.trim().toLowerCase())
                 .orElseThrow(() -> ApiException.forbidden(email + " is not a member of any Edocs workspace. Ask an administrator for an invite."));
+        // SSO must not bypass MFA: the provider has to assert it, otherwise use password + code.
+        if (user.isMfaEnabled() && !idpMfa) {
+            throw ApiException.forbidden("Your account requires MFA. Sign in with your password and code.");
+        }
         return startSession(user, activeMembership(user), "oauth2");
     }
 
