@@ -1,0 +1,82 @@
+# Full Edocs stack: docker compose up --build
+#   Frontend      http://localhost:5173
+#   API + docs    http://localhost:8080/api/docs
+#   RabbitMQ UI   http://localhost:15672  (edocs / edocs)
+#   Mailpit (SMTP sink) http://localhost:8025
+name: edocs
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: edocs
+      POSTGRES_USER: edocs
+      POSTGRES_PASSWORD: edocs
+    ports: ["5433:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edocs -d edocs"]
+      interval: 5s
+      retries: 10
+
+  mongo:
+    image: mongo:8
+    ports: ["27017:27017"]
+    volumes: [mongodata:/data/db]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: edocs
+      RABBITMQ_DEFAULT_PASS: edocs
+    ports: ["5672:5672", "15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["1025:1025", "8025:8025"]
+
+  backend:
+    build: ./edocs_backend
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://postgres:5432/edocs
+      DB_USER: edocs
+      DB_PASSWORD: edocs
+      MONGO_URI: mongodb://mongo:27017/edocs
+      RABBIT_HOST: rabbitmq
+      RABBIT_USER: edocs
+      RABBIT_PASSWORD: edocs
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      FRONTEND_URL: http://localhost:5173
+      CORS_ORIGINS: http://localhost:5173
+      JWT_SECRET: ${JWT_SECRET:-compose-dev-secret-change-me-compose-dev-secret}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-google-client-id-not-set}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-not-set}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-microsoft-client-id-not-set}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-not-set}
+    ports: ["8080:8080"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  frontend:
+    build:
+      context: ./edocs_frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8080/api
+    ports: ["5173:80"]
+    depends_on: [backend]
+
+volumes:
+  pgdata:
+  mongodata:

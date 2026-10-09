@@ -31,6 +31,7 @@ const BASE_URL = (import.meta.env?.VITE_API_BASE_URL as string | undefined) || '
 export const isMockMode = !BASE_URL
 
 const SESSION_KEY = 'edocs.session'
+const OAUTH_PENDING = 'edocs.oauth.pending'
 const LATENCY_MS = import.meta.env?.MODE === 'test' ? 0 : 150
 
 export class ApiError extends Error {
@@ -206,6 +207,7 @@ export const api = {
   /** OAuth2 authorization-code flow. In mock mode the provider "returns" the admin account. */
   loginWithProvider: (provider: 'google' | 'microsoft') => {
     if (!isMockMode) {
+      sessionStorage.setItem(OAUTH_PENDING, provider)
       window.location.assign(`${BASE_URL}/oauth2/authorization/${provider}`)
       return new Promise<Session>(() => {})
     }
@@ -216,6 +218,23 @@ export const api = {
       api._persist(s)
       return s
     })
+  },
+
+  /** Finishes OAuth2 sign-in: the backend redirects to /login#token=<jwt>; trade it for the user profile. */
+  completeOAuthRedirect: async (): Promise<Session | null> => {
+    const match = /[#&]token=([^&]+)/.exec(window.location.hash)
+    if (!match || isMockMode) return null
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    // Only accept a token for a sign-in this tab started, so a crafted link cannot log the user into another account.
+    const pending = sessionStorage.getItem(OAUTH_PENDING)
+    sessionStorage.removeItem(OAUTH_PENDING)
+    if (!pending) throw new ApiError('Single sign-on was not started from this browser. Try again.', 400)
+    const token = decodeURIComponent(match[1]!)
+    const res = await fetch(`${BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) throw new ApiError('Single sign-on failed. Try again.', res.status)
+    const session: Session = { token, user: (await res.json()) as User }
+    api._persist(session)
+    return session
   },
 
   logout: () =>

@@ -38,7 +38,7 @@ export default function LoginPage() {
   const [mfa, setMfa] = useState<{ challengeId: string; email: string } | null>(null)
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(params.get('error'))
 
   if (user) return <Navigate to={next} replace />
 
