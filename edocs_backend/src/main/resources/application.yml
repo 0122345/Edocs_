@@ -1,0 +1,131 @@
+server:
+  port: ${PORT:8080}
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    mime-types: application/json,text/plain
+    min-response-size: 1024
+  forward-headers-strategy: framework
+  shutdown: graceful
+
+spring:
+  application:
+    name: edocs-backend
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/edocs}
+    username: ${DB_USER:edocs}
+    password: ${DB_PASSWORD:edocs}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: 2
+      connection-timeout: 5000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+          time_zone: UTC
+        order_inserts: true
+        order_updates: true
+        default_batch_fetch_size: 50
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mongodb:
+    uri: ${MONGO_URI:mongodb://localhost:27017/edocs}
+  data:
+    mongodb:
+      auto-index-creation: true
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: ${RABBIT_PORT:5672}
+    username: ${RABBIT_USER:guest}
+    password: ${RABBIT_PASSWORD:guest}
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USER:}
+    password: ${MAIL_PASSWORD:}
+  cache:
+    type: caffeine
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:google-client-id-not-set}
+            client-secret: ${GOOGLE_CLIENT_SECRET:google-client-secret-not-set}
+            scope: openid,profile,email
+          microsoft:
+            client-id: ${MICROSOFT_CLIENT_ID:microsoft-client-id-not-set}
+            client-secret: ${MICROSOFT_CLIENT_SECRET:microsoft-client-secret-not-set}
+            scope: openid,profile,email
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            client-name: Microsoft
+        provider:
+          microsoft:
+            authorization-uri: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+            token-uri: https://login.microsoftonline.com/common/oauth2/v2.0/token
+            jwk-set-uri: https://login.microsoftonline.com/common/discovery/v2.0/keys
+            user-info-uri: https://graph.microsoft.com/oidc/userinfo
+            user-name-attribute: email
+
+management:
+  health:
+    # Mail is delivered asynchronously via RabbitMQ with retries, so an SMTP outage must not mark the API unhealthy.
+    mail:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /docs
+  api-docs:
+    path: /v3/api-docs
+
+edocs:
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  cors-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:4173,http://localhost:3000}
+  security:
+    jwt-secret: ${JWT_SECRET:dev-only-secret-change-me-dev-only-secret-change-me-0123456789}
+    token-ttl: ${JWT_TTL:PT2H}
+    max-failed-logins: 5
+    lockout: PT15M
+    # Accepted as an MFA code alongside the emailed one; leave empty in production.
+    demo-mfa-code: ${DEMO_MFA_CODE:}
+  crypto:
+    # Base64 AES-256 key-encryption key used to wrap each document's data key.
+    master-key: ${MASTER_KEY:3q2+7wABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGho=}
+  otp:
+    ttl: PT10M
+    max-attempts: 5
+    # Copies signing codes into the in-app bell so the demo works without a phone.
+    echo-in-app: ${OTP_ECHO_IN_APP:false}
+  seed:
+    enabled: ${SEED_DEMO_DATA:true}
+    demo-password: ${DEMO_PASSWORD:Demo@2026}
+  mail:
+    from: no-reply@edocs.local

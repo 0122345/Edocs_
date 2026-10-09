@@ -1,0 +1,9 @@
+edocs:
+  security:
+    demo-mfa-code: "246810"
+  otp:
+    echo-in-app: true
+
+logging:
+  level:
+    com.edocs: DEBUG
