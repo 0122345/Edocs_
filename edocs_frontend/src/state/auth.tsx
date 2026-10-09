@@ -18,6 +18,11 @@ const AuthContext = createContext<AuthValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => api.session()?.user ?? null)
 
+  // Pick up the token handed back by an OAuth2 (Google / Microsoft) redirect.
+  useEffect(() => {
+    api.completeOAuthRedirect().then((s) => s && setUser(s.user)).catch(() => setUser(null))
+  }, [])
+
   // Keep the signed-in user in sync when an admin changes their role or status.
   useEffect(
     () =>

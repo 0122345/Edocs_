@@ -218,6 +218,19 @@ export const api = {
     })
   },
 
+  /** Finishes OAuth2 sign-in: the backend redirects to /login#token=<jwt>; trade it for the user profile. */
+  completeOAuthRedirect: async (): Promise<Session | null> => {
+    const match = /[#&]token=([^&]+)/.exec(window.location.hash)
+    if (!match || isMockMode) return null
+    const token = decodeURIComponent(match[1]!)
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    const res = await fetch(`${BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) throw new ApiError('Single sign-on failed. Try again.', res.status)
+    const session: Session = { token, user: (await res.json()) as User }
+    api._persist(session)
+    return session
+  },
+
   logout: () =>
     call<void>(
       () => http('/auth/logout', json('POST')),
