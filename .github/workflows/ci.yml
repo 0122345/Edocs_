@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main, frontend, backend]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (build, test, coverage)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: edocs_backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      # Docker is available on GitHub runners, so ContainersFlowTest runs against real PostgreSQL, MongoDB and RabbitMQ.
+      - run: chmod +x mvnw && ./mvnw -B verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-reports
+          path: |
+            edocs_backend/target/surefire-reports
+            edocs_backend/target/site/jacoco
+
+  frontend:
+    name: Frontend (typecheck, test, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: edocs_frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: edocs_frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc -b
+      - run: npm test
+      - run: npm run build
+
+  images:
+    name: Docker images
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: edocs_backend
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/edocs-backend:latest,ghcr.io/${{ github.repository_owner }}/edocs-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: edocs_frontend
+          push: true
+          build-args: VITE_API_BASE_URL=${{ vars.API_BASE_URL }}
+          tags: ghcr.io/${{ github.repository_owner }}/edocs-frontend:latest,ghcr.io/${{ github.repository_owner }}/edocs-frontend:${{ github.sha }}
