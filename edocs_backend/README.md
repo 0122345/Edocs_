@@ -77,12 +77,12 @@ In the `dev` profile, signing codes are also copied to the in-app bell (`OTP_ECH
 | `MONGO_URI` | `mongodb://localhost:27017/edocs` | MongoDB |
 | `RABBIT_HOST`, `RABBIT_PORT`, `RABBIT_USER`, `RABBIT_PASSWORD` | localhost / guest | RabbitMQ |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM` | localhost:1025, `no-reply@edocs.local` | SMTP (Mailpit in compose) and sender address |
-| `JWT_SECRET` | dev value | HS256 signing key, at least 32 bytes. **Set in production.** |
+| `JWT_SECRET` | none (dev value in `dev`) | HS256 signing key, at least 32 bytes. **Required** outside the `dev` profile: the API refuses to start when it is empty or a published placeholder. |
 | `JWT_TTL` | `PT2H` | Access-token lifetime |
-| `MASTER_KEY` | dev value | Base64 AES-256 key-encryption key. **Set in production.** |
+| `MASTER_KEY` | none (dev value in `dev`) | Base64 AES-256 key-encryption key. **Required** outside the `dev` profile: the API refuses to start when it is empty or a published placeholder. |
 | `GOOGLE_CLIENT_ID/SECRET`, `MICROSOFT_CLIENT_ID/SECRET` | placeholders | OAuth2 login providers. Redirect URI: `{base}/api/login/oauth2/code/{google\|microsoft}`. Only verified emails link to members (Google `email_verified`; Microsoft needs the `xms_edov` optional claim). MFA members need the IdP to assert `amr=mfa`. |
 | `FRONTEND_URL`, `CORS_ORIGINS` | `http://localhost:5173` | OAuth redirect target, allowed origins |
-| `SEED_DEMO_DATA` | `true` | Seed the demo workspace into an empty database |
+| `SEED_DEMO_DATA` | `false` (`true` in `dev`) | Seed the demo workspace into an empty database (all demo accounts share one password) |
 
 ## Test
 

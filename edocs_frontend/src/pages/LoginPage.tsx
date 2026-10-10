@@ -38,7 +38,11 @@ export default function LoginPage() {
   const [mfa, setMfa] = useState<{ challengeId: string; email: string } | null>(null)
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(params.get('error'))
+  const [error, setError] = useState<string | null>(() => {
+    const e = params.get('error')
+    // The backend sends a generic marker when the identity provider exchange itself fails.
+    return e === 'oauth' ? 'Single sign-on failed. Try again, or sign in with your email and password.' : e
+  })
 
   if (user) return <Navigate to={next} replace />
 

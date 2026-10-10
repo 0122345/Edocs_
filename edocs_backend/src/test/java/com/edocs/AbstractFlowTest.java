@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -31,6 +32,9 @@ import com.jayway.jsonpath.JsonPath;
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
+        "edocs.security.jwt-secret=flow-test-secret-flow-test-secret-flow-test-0123456789",
+        "edocs.crypto.master-key=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+        "edocs.seed.enabled=true",
         "edocs.security.demo-mfa-code=246810",
         "edocs.otp.echo-in-app=true",
         "spring.mail.host=localhost",
@@ -43,6 +47,9 @@ abstract class AbstractFlowTest {
 
     @Autowired
     MockMvc mvc;
+
+    @Autowired
+    JdbcTemplate jdbc;
 
     private String login(String email) throws Exception {
         String body = mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
@@ -156,7 +163,9 @@ abstract class AbstractFlowTest {
         String signer = login("m.vance@partnercorp.io");
         mvc.perform(as(signer, post("/documents/" + id + "/signatures")).content("{\"mode\":\"type\",\"otp\":\"123456\",\"signature\":\"Marcus Vance\"}"))
                 .andExpect(status().isUnprocessableEntity());
-        mvc.perform(as(signer, post("/documents/" + id + "/otp"))).andExpect(status().isOk()).andExpect(jsonPath("$.sentTo").isString());
+        // A phone on file must not swallow the code while only the logging SMS stand-in is wired: it goes by email.
+        jdbc.update("UPDATE users SET phone = '+250788123456' WHERE email = 'm.vance@partnercorp.io'");
+        mvc.perform(as(signer, post("/documents/" + id + "/otp"))).andExpect(status().isOk()).andExpect(jsonPath("$.sentTo").value("m•••e@partnercorp.io"));
         String notes = json(signer, get("/notifications"));
         Matcher m = Pattern.compile("signing code is (\\d{6})").matcher(notes);
         assertThat(m.find()).isTrue();

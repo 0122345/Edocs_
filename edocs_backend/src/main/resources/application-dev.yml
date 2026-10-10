@@ -1,8 +1,14 @@
 edocs:
   security:
+    # Published development keys; SecretsGuard only accepts them while this profile is active.
+    jwt-secret: ${JWT_SECRET:dev-only-secret-change-me-dev-only-secret-change-me-0123456789}
     demo-mfa-code: "246810"
+  crypto:
+    master-key: ${MASTER_KEY:3q2+7wABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGho=}
   otp:
     echo-in-app: true
+  seed:
+    enabled: ${SEED_DEMO_DATA:true}
 
 logging:
   level:

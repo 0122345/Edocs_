@@ -29,6 +29,7 @@ import com.edocs.identity.User;
 import com.edocs.identity.UserRepository;
 import com.edocs.messaging.DomainEvent;
 import com.edocs.messaging.MessagePublisher;
+import com.edocs.messaging.SmsGateway;
 import com.edocs.notification.Channel;
 import com.edocs.notification.NotificationService;
 import com.edocs.notification.NotificationService.Recipient;
@@ -58,11 +59,12 @@ public class SigningService {
     private final NotificationService notifications;
     private final MessagePublisher publisher;
     private final EdocsProperties props;
+    private final SmsGateway smsGateway;
 
     public SigningService(DocumentAccess access, DocumentRepository documents, DocumentService documentService, ContentStore contents,
             SignatureRepository signatures, SignatureArtifactRepository artifacts, OtpService otps, UserRepository users,
             OrganizationRepository organizations, WorkflowService workflows, AuditService audit, NotificationService notifications,
-            MessagePublisher publisher, EdocsProperties props) {
+            MessagePublisher publisher, EdocsProperties props, SmsGateway smsGateway) {
         this.access = access;
         this.documents = documents;
         this.documentService = documentService;
@@ -77,9 +79,10 @@ public class SigningService {
         this.notifications = notifications;
         this.publisher = publisher;
         this.props = props;
+        this.smsGateway = smsGateway;
     }
 
-    // Sends a one-time code to the signer (SMS when a phone is on file, otherwise email) via RabbitMQ.
+    // Sends a one-time code to the signer via RabbitMQ: SMS when a phone is on file and a real SMS provider is wired, otherwise email.
     @Transactional
     public OtpSent sendOtp(String id) {
         AuthUser me = CurrentUser.get();
@@ -89,7 +92,7 @@ public class SigningService {
         OtpService.Issued issued = otps.issue(me.userId(), doc.getId(), Purpose.SIGNING);
         String minutes = String.valueOf(props.otp().ttl().toMinutes());
         String wire = "Your Edocs signing code is " + issued.code() + ". It expires in " + minutes + " minutes.";
-        boolean sms = user.getPhone() != null && !user.getPhone().isBlank();
+        boolean sms = smsGateway.delivers() && user.getPhone() != null && !user.getPhone().isBlank();
         notifications.send(me.orgId(), new Recipient(me.userId(), me.email(), user.getPhone()), NotificationType.OTP,
                 sms ? Channel.SMS : Channel.EMAIL, "Your signing code", "A signing code for “" + doc.getTitle() + "” was sent to you.", null, wire);
         if (props.otp().echoInApp()) {

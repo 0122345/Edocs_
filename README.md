@@ -306,7 +306,7 @@ Signed documents are read-only (WORM). Admins can place a **legal hold**. Archiv
 | audit:export | ✓ | | | ✓ |
 | settings:manage, members:manage, compliance:run | ✓ | | | |
 
-> Before any real deployment, set `JWT_SECRET`, `MASTER_KEY` and real OAuth credentials, leave `DEMO_MFA_CODE` empty and keep `OTP_ECHO_IN_APP=false`. The `dev` profile turns on both demo shortcuts.
+> Before any real deployment, set `JWT_SECRET`, `MASTER_KEY` and real OAuth credentials, leave `DEMO_MFA_CODE` empty and keep `OTP_ECHO_IN_APP=false`. The `dev` profile turns on both demo shortcuts, demo seeding and published development keys; never run it in production.
 
 ---
 
@@ -322,15 +322,15 @@ Backend environment variables (defaults are in `edocs_backend/src/main/resources
 | `RABBIT_HOST`, `RABBIT_PORT`, `RABBIT_USER`, `RABBIT_PASSWORD` | `localhost`, 5672, `guest` | RabbitMQ |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASSWORD` | `localhost:1025` | SMTP (Mailpit in compose) |
 | `MAIL_FROM` | `no-reply@edocs.local` | Sender address of outgoing email |
-| `JWT_SECRET` | dev value | HS256 key, at least 32 bytes. **Set in production.** |
+| `JWT_SECRET` | none (dev value in `dev`) | HS256 key, at least 32 bytes. **Required** outside the `dev` profile: the API refuses to start when it is empty or a published placeholder. |
 | `JWT_TTL` | `PT2H` | Token lifetime |
-| `MASTER_KEY` | dev value | Base64 AES-256 key-encryption key. **Set in production.** |
+| `MASTER_KEY` | none (dev value in `dev`) | Base64 AES-256 key-encryption key. **Required** outside the `dev` profile: the API refuses to start when it is empty or a published placeholder. |
 | `GOOGLE_CLIENT_ID/SECRET`, `MICROSOFT_CLIENT_ID/SECRET` | placeholders | SSO. Redirect URI: `{base}/api/login/oauth2/code/{google\|microsoft}` |
 | `FRONTEND_URL` | `http://localhost:5173` | Where OAuth redirects back to |
 | `CORS_ORIGINS` | 5173, 4173, 3000 on localhost | Allowed browser origins |
 | `DEMO_MFA_CODE` | empty (`246810` in `dev`) | Static MFA code accepted for demos |
 | `OTP_ECHO_IN_APP` | `false` (`true` in `dev`) | Copy signing codes to the in-app bell |
-| `SEED_DEMO_DATA`, `DEMO_PASSWORD` | `true`, `Demo@2026` | Seed the demo workspace into an empty database |
+| `SEED_DEMO_DATA`, `DEMO_PASSWORD` | `false` (`true` in `dev`), `Demo@2026` | Seed the demo workspace into an empty database. Every demo account shares this password, so keep it off in production. |
 
 Frontend: `VITE_API_BASE_URL` (empty means mock mode). In Docker it is a **build argument**, because Vite inlines it at build time.
 
@@ -353,6 +353,9 @@ cd edocs_frontend && npm test         # Vitest
 # Against real, locally running services
 EDOCS_IT_LOCAL=true ./mvnw test -Dtest=LocalInfraFlowTest            # backend journeys on local Postgres/Mongo/RabbitMQ/Mailpit
 EDOCS_LIVE_API=http://localhost:8080/api npm test                    # frontend API client against the running backend
+
+# Every backend suite in one run, none skipped (Docker running, local stores created)
+EDOCS_IT_LOCAL=true ./mvnw verify "-Djunit.jupiter.conditions.deactivate=org.junit.*DisabledIfCondition"
 ```
 
 Backend tests:
@@ -363,6 +366,8 @@ Backend tests:
 - **`LocalInfraFlowTest`**: the same journeys on locally installed services, enabled by `EDOCS_IT_LOCAL=true`. It wipes and reuses the isolated stores `edocs_it` (PostgreSQL database, MongoDB database, RabbitMQ vhost), so create those once. Override the connections with `EDOCS_IT_*` variables.
 
 Frontend tests: `npm test` always runs the unit tests on mock data (Vitest pins `VITE_API_BASE_URL` to empty). `api.live.test.ts` drives the real client against a running backend when `EDOCS_LIVE_API` is set: MFA sign-in with the emailed code, create/edit/send, signing with the emailed OTP, RBAC and token revocation. It reads codes from Mailpit (`EDOCS_MAILPIT`, default `http://localhost:8025`).
+
+**Testing single sign-on without real Google/Microsoft credentials.** Run a local OpenID Connect provider (`docker run -d -p 8090:8080 ghcr.io/navikt/mock-oauth2-server:2.1.10`) and point the `google` registration at it with `GOOGLE_CLIENT_ID`/`SECRET` (any value) plus `SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_ISSUER_URI`, `_AUTHORIZATION_URI`, `_TOKEN_URI`, `_JWK_SET_URI` and `_USER_INFO_URI` (`http://localhost:8090/google/...`; from inside compose, use `host.docker.internal` for everything except the browser-facing authorization URI) and `_USER_NAME_ATTRIBUTE=sub`. On the provider's sign-in page, enter claims such as `{"email":"s.jenkins@acme.corp","email_verified":true}`. Add `"amr":["mfa"]` for members with MFA. A failed exchange is logged as `OAuth2 sign-in failed: ...`.
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on pushes to `main`, `frontend` and `backend`, and on PRs into `main`:
 
