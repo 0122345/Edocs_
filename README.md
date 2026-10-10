@@ -124,7 +124,7 @@ npm test               # Vitest unit tests
 `VITE_API_BASE_URL` in `.env` chooses the data source:
 
 - **Empty**: mock mode. Data lives in an in-browser mock database (`src/services/mockDb.ts`). Settings → *Reset demo data* restores the samples.
-- **`http://localhost:8080/api`**: the real backend. After every write the client refreshes open screens, again 1.5 s later (to pick up notifications written by the RabbitMQ consumers), on tab focus and every 30 s. A 401 from the API ends the session and returns to sign-in.
+- **`http://localhost:8080/api`**: the real backend. After every write the client refreshes open screens once (writes in the same tick are merged), and again on tab focus or every 30 s when nothing has refreshed for 30 s, which picks up other people's changes and the asynchronous anchor entries written by the RabbitMQ consumers. A 401 from the API ends the session and returns to sign-in.
 
 The backend allows CORS from ports 5173, 4173 and 3000 by default. If you serve the frontend from another origin, add it to `CORS_ORIGINS`.
 
