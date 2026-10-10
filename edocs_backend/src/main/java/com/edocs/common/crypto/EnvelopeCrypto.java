@@ -12,12 +12,14 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 
 import com.edocs.config.EdocsProperties;
 
 // Envelope encryption: each document gets its own AES-256 data key, wrapped by the master key (KEK).
 @Component
+@DependsOn("secretsGuard")
 public class EnvelopeCrypto {
 
     private static final String AES_GCM = "AES/GCM/NoPadding";

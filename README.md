@@ -306,7 +306,7 @@ Signed documents are read-only (WORM). Admins can place a **legal hold**. Archiv
 | audit:export | ✓ | | | ✓ |
 | settings:manage, members:manage, compliance:run | ✓ | | | |
 
-> Before any real deployment, set `JWT_SECRET`, `MASTER_KEY` and real OAuth credentials, leave `DEMO_MFA_CODE` empty and keep `OTP_ECHO_IN_APP=false`. The `dev` profile turns on both demo shortcuts.
+> Before any real deployment, set `JWT_SECRET`, `MASTER_KEY` and real OAuth credentials, leave `DEMO_MFA_CODE` empty and keep `OTP_ECHO_IN_APP=false`. The `dev` profile turns on both demo shortcuts, demo seeding and published development keys; never run it in production.
 
 ---
 
@@ -322,15 +322,15 @@ Backend environment variables (defaults are in `edocs_backend/src/main/resources
 | `RABBIT_HOST`, `RABBIT_PORT`, `RABBIT_USER`, `RABBIT_PASSWORD` | `localhost`, 5672, `guest` | RabbitMQ |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASSWORD` | `localhost:1025` | SMTP (Mailpit in compose) |
 | `MAIL_FROM` | `no-reply@edocs.local` | Sender address of outgoing email |
-| `JWT_SECRET` | dev value | HS256 key, at least 32 bytes. **Set in production.** |
+| `JWT_SECRET` | none (dev value in `dev`) | HS256 key, at least 32 bytes. **Required** outside the `dev` profile: the API refuses to start when it is empty or a published placeholder. |
 | `JWT_TTL` | `PT2H` | Token lifetime |
-| `MASTER_KEY` | dev value | Base64 AES-256 key-encryption key. **Set in production.** |
+| `MASTER_KEY` | none (dev value in `dev`) | Base64 AES-256 key-encryption key. **Required** outside the `dev` profile: the API refuses to start when it is empty or a published placeholder. |
 | `GOOGLE_CLIENT_ID/SECRET`, `MICROSOFT_CLIENT_ID/SECRET` | placeholders | SSO. Redirect URI: `{base}/api/login/oauth2/code/{google\|microsoft}` |
 | `FRONTEND_URL` | `http://localhost:5173` | Where OAuth redirects back to |
 | `CORS_ORIGINS` | 5173, 4173, 3000 on localhost | Allowed browser origins |
 | `DEMO_MFA_CODE` | empty (`246810` in `dev`) | Static MFA code accepted for demos |
 | `OTP_ECHO_IN_APP` | `false` (`true` in `dev`) | Copy signing codes to the in-app bell |
-| `SEED_DEMO_DATA`, `DEMO_PASSWORD` | `true`, `Demo@2026` | Seed the demo workspace into an empty database |
+| `SEED_DEMO_DATA`, `DEMO_PASSWORD` | `false` (`true` in `dev`), `Demo@2026` | Seed the demo workspace into an empty database. Every demo account shares this password, so keep it off in production. |
 
 Frontend: `VITE_API_BASE_URL` (empty means mock mode). In Docker it is a **build argument**, because Vite inlines it at build time.
 

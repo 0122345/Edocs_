@@ -32,6 +32,9 @@ import com.jayway.jsonpath.JsonPath;
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
+        "edocs.security.jwt-secret=flow-test-secret-flow-test-secret-flow-test-0123456789",
+        "edocs.crypto.master-key=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+        "edocs.seed.enabled=true",
         "edocs.security.demo-mfa-code=246810",
         "edocs.otp.echo-in-app=true",
         "spring.mail.host=localhost",

@@ -113,7 +113,8 @@ edocs:
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
   cors-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:4173,http://localhost:3000}
   security:
-    jwt-secret: ${JWT_SECRET:dev-only-secret-change-me-dev-only-secret-change-me-0123456789}
+    # No fallback: outside the dev profile the API refuses to start without a real key (see SecretsGuard).
+    jwt-secret: ${JWT_SECRET:}
     token-ttl: ${JWT_TTL:PT2H}
     max-failed-logins: 5
     lockout: PT15M
@@ -121,14 +122,15 @@ edocs:
     demo-mfa-code: ${DEMO_MFA_CODE:}
   crypto:
     # Base64 AES-256 key-encryption key used to wrap each document's data key.
-    master-key: ${MASTER_KEY:3q2+7wABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGho=}
+    master-key: ${MASTER_KEY:}
   otp:
     ttl: PT10M
     max-attempts: 5
     # Copies signing codes into the in-app bell so the demo works without a phone.
     echo-in-app: ${OTP_ECHO_IN_APP:false}
   seed:
-    enabled: ${SEED_DEMO_DATA:true}
+    # Demo accounts share one known password, so seeding is opt-in (on in the dev profile).
+    enabled: ${SEED_DEMO_DATA:false}
     demo-password: ${DEMO_PASSWORD:Demo@2026}
   mail:
     from: ${MAIL_FROM:no-reply@edocs.local}

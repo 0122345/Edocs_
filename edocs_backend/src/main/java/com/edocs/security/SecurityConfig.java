@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -89,6 +90,7 @@ public class SecurityConfig {
     }
 
     @Bean
+    @DependsOn("secretsGuard")
     SecretKey jwtKey(EdocsProperties props) {
         byte[] bytes = props.security().jwtSecret().getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {
