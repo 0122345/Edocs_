@@ -17,13 +17,15 @@ class LocalInfraFlowTest extends AbstractFlowTest {
 
     private static final String DB_URL = env("EDOCS_IT_DB_URL", "jdbc:postgresql://localhost:5432/edocs_it");
     private static final String MONGO_URI = env("EDOCS_IT_MONGO_URI", "mongodb://localhost:27017/edocs_it");
+    private static final String DB_USER = env("EDOCS_IT_DB_USER", "edocs");
+    private static final String DB_PASSWORD = env("EDOCS_IT_DB_PASSWORD", "edocs");
 
     @DynamicPropertySource
     static void infrastructure(DynamicPropertyRegistry registry) throws Exception {
         resetStores();
         registry.add("spring.datasource.url", () -> DB_URL);
-        registry.add("spring.datasource.username", () -> env("EDOCS_IT_DB_USER", "edocs"));
-        registry.add("spring.datasource.password", () -> env("EDOCS_IT_DB_PASSWORD", "edocs"));
+        registry.add("spring.datasource.username", () -> DB_USER);
+        registry.add("spring.datasource.password", () -> DB_PASSWORD);
         registry.add("spring.mongodb.uri", () -> MONGO_URI);
         registry.add("spring.rabbitmq.host", () -> env("EDOCS_IT_RABBIT_HOST", "localhost"));
         registry.add("spring.rabbitmq.username", () -> env("EDOCS_IT_RABBIT_USER", "edocs"));
@@ -34,7 +36,7 @@ class LocalInfraFlowTest extends AbstractFlowTest {
 
     // Journeys expect a freshly seeded workspace, so both stores start empty on every run.
     private static void resetStores() throws Exception {
-        try (Connection c = DriverManager.getConnection(DB_URL, env("EDOCS_IT_DB_USER", "edocs"), env("EDOCS_IT_DB_PASSWORD", "edocs"));
+        try (Connection c = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
                 Statement s = c.createStatement()) {
             s.execute("DROP SCHEMA public CASCADE");
             s.execute("CREATE SCHEMA public");

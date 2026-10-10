@@ -1,5 +1,6 @@
 package com.edocs.security;
 
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -73,7 +74,8 @@ public class SecurityConfig {
                         .successHandler(oauthSuccess)
                         .failureHandler((req, res, ex) -> {
                             log.warn("OAuth2 sign-in failed: {}", ex.getMessage());
-                            res.sendRedirect(props.frontendUrl() + "/login?error=oauth");
+                            res.sendRedirect(props.frontendUrl() + "/login?error="
+                                    + URLEncoder.encode("Single sign-on failed. Try again, or sign in with your email and password.", StandardCharsets.UTF_8));
                         }))
                 .oauth2ResourceServer(o -> o
                         .jwt(j -> j.jwtAuthenticationConverter(converter))

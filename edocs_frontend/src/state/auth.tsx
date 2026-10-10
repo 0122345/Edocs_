@@ -26,18 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Keep the signed-in user in sync when an admin changes their role or status, or the backend ends the session.
   useEffect(
     () =>
-      api.subscribe(() => {
-        if (!isMockMode) {
-          if (!api.session()) setUser(null)
-          return
-        }
+      isMockMode ? db.subscribe(() => {
         setUser((u) => {
           if (!u) return u
           const fresh = db.get().users.find((x) => x.id === u.id)
           if (!fresh || !fresh.active) return null
           return JSON.stringify(fresh) === JSON.stringify(u) ? u : fresh
         })
-      }),
+      }) : api.onSessionEnd(() => setUser(null)),
     [],
   )
 

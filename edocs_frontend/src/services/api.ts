@@ -78,13 +78,24 @@ function requirePermission(permission: Permission) {
 // --------------------------------------------------------------------------
 // Remote mode has no in-browser DB to watch, so screens reload after every successful write instead.
 const remoteListeners = new Set<() => void>()
+const sessionEndListeners = new Set<() => void>()
+let emitQueued = false
+let lastEmit = 0
+// Writes that land in the same tick (e.g. save then send) cause a single reload.
 function emitRemoteChange() {
-  remoteListeners.forEach((l) => l())
+  if (emitQueued) return
+  emitQueued = true
+  queueMicrotask(() => {
+    emitQueued = false
+    lastEmit = Date.now()
+    remoteListeners.forEach((l) => l())
+  })
 }
 if (!isMockMode && typeof document !== 'undefined') {
-  // Pick up changes other people made: on returning to the tab, and every 30 s while it is visible.
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && emitRemoteChange())
-  setInterval(() => document.visibilityState === 'visible' && currentSession && emitRemoteChange(), 30_000)
+  // Pick up changes other people made (and async anchor entries): on returning to the tab, and every 30 s while it is visible.
+  const refreshIfStale = () => document.visibilityState === 'visible' && currentSession && Date.now() - lastEmit >= 30_000 && emitRemoteChange()
+  document.addEventListener('visibilitychange', refreshIfStale)
+  setInterval(refreshIfStale, 30_000)
 }
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
@@ -102,18 +113,13 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
     const body = (await res.json().catch(() => null)) as { message?: string } | null
     // An expired or revoked token ends the session everywhere in the app.
     if (res.status === 401 && currentSession && !path.startsWith('/auth/')) {
-      currentSession = null
-      writeSession(null)
-      emitRemoteChange()
+      api._persist(null)
+      sessionEndListeners.forEach((l) => l())
     }
     throw new ApiError(body?.message ?? `${method} ${path} failed with ${res.status}`, res.status)
   }
   const data = res.status === 204 ? (undefined as T) : ((await res.json()) as T)
-  if (method !== 'GET') {
-    emitRemoteChange()
-    // Notifications are written by RabbitMQ consumers a moment after the request returns.
-    setTimeout(emitRemoteChange, 1500)
-  }
+  if (method !== 'GET' && !path.startsWith('/auth/')) emitRemoteChange()
   return data
 }
 
@@ -165,7 +171,7 @@ export async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-function initials(name: string) {
+export function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('') || '?'
 }
 
@@ -200,6 +206,14 @@ export const api = {
     remoteListeners.add(listener)
     return () => {
       remoteListeners.delete(listener)
+    }
+  },
+
+  /** Fires when the backend rejects the stored token (expired or revoked); remote mode only. */
+  onSessionEnd: (listener: () => void) => {
+    sessionEndListeners.add(listener)
+    return () => {
+      sessionEndListeners.delete(listener)
     }
   },
 
