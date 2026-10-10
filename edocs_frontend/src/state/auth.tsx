@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, type LoginResult } from '../services/api'
+import { api, isMockMode, type LoginResult } from '../services/api'
 import { db } from '../services/mockDb'
 import { can, type Permission } from '../lib/rbac'
 import type { User } from '../data/types'
@@ -23,10 +23,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api.completeOAuthRedirect().then((s) => s && setUser(s.user)).catch(() => setUser(null))
   }, [])
 
-  // Keep the signed-in user in sync when an admin changes their role or status.
+  // Keep the signed-in user in sync when an admin changes their role or status, or the backend ends the session.
   useEffect(
     () =>
-      db.subscribe(() => {
+      api.subscribe(() => {
+        if (!isMockMode) {
+          if (!api.session()) setUser(null)
+          return
+        }
         setUser((u) => {
           if (!u) return u
           const fresh = db.get().users.find((x) => x.id === u.id)

@@ -59,6 +59,7 @@ services:
       FRONTEND_URL: http://localhost:5173
       CORS_ORIGINS: http://localhost:5173
       JWT_SECRET: ${JWT_SECRET:-compose-dev-secret-change-me-compose-dev-secret}
+      MASTER_KEY: ${MASTER_KEY:-3q2+7wABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGho=}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-google-client-id-not-set}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-not-set}
       MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-microsoft-client-id-not-set}

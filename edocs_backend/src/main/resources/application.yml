@@ -12,6 +12,9 @@ server:
 spring:
   application:
     name: edocs-backend
+  # Local keys live in edocs_backend/.env (see .env.example); real environment variables still win.
+  config:
+    import: optional:file:.env[.properties]
   threads:
     virtual:
       enabled: true
@@ -128,4 +131,4 @@ edocs:
     enabled: ${SEED_DEMO_DATA:true}
     demo-password: ${DEMO_PASSWORD:Demo@2026}
   mail:
-    from: no-reply@edocs.local
+    from: ${MAIL_FROM:no-reply@edocs.local}
