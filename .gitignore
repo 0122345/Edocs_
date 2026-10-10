@@ -1,0 +1,4 @@
+.env
+.env.local
+*.log
+erl_crash.dump
