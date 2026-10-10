@@ -172,7 +172,7 @@ export default function SignPage() {
       const r = await api.sendOtp(id)
       setOtpSentTo(r.sentTo)
       setOtpCooldown(30)
-      toast(isMockMode ? 'Code sent. In demo mode it appears in your notifications (bell icon).' : `Code sent to ${r.sentTo}. Check your inbox.`)
+      toast(isMockMode ? 'Code sent. In demo mode it appears in your notifications (bell icon).' : `Code sent to ${r.sentTo}.`)
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e), 'error')
     }

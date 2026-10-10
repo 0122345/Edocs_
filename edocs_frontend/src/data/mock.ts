@@ -3,7 +3,6 @@ import type {
   AppNotification,
   AuditLogEntry,
   Bottleneck,
-  Collaborator,
   ComplianceControl,
   DocumentRecord,
   Kpi,
@@ -282,12 +281,6 @@ export const seedSettings: WorkspaceSettings = {
   retentionYears: 7,
   require2fa: true,
 }
-
-export const collaborators: Collaborator[] = [
-  { id: 'c1', name: 'Sarah Jenkins', role: 'Legal counsel', presence: 'active', initials: 'SJ' },
-  { id: 'c2', name: 'Marcus Vance', role: 'Counterparty', presence: 'viewing', initials: 'MV' },
-  { id: 'c3', name: 'Elena Rostova', role: 'Compliance officer', presence: 'away', initials: 'ER' },
-]
 
 export const activityFeed: ActivityItem[] = [
   { id: 'f1', icon: 'identity', text: 'Dr. Aris Thorne verified their identity through the SwissID eIDAS gateway.', meta: '2 mins ago · IP 194.154.22.10' },

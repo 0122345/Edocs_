@@ -16,12 +16,16 @@ public class SecretsGuard {
             return;
         }
         String jwt = props.security().jwtSecret();
-        if (jwt == null || jwt.isBlank() || jwt.contains("change-me")) {
+        if (placeholder(jwt)) {
             throw new IllegalStateException("Set JWT_SECRET to a random value of at least 32 bytes (e.g. openssl rand -base64 48), or run with the dev profile.");
         }
         String master = props.crypto().masterKey();
-        if (master == null || master.isBlank() || master.contains("change-me") || master.equals(PUBLISHED_MASTER_KEY)) {
+        if (placeholder(master) || master.equals(PUBLISHED_MASTER_KEY)) {
             throw new IllegalStateException("Set MASTER_KEY to a base64 256-bit key (e.g. openssl rand -base64 32), or run with the dev profile.");
         }
+    }
+
+    private static boolean placeholder(String value) {
+        return value == null || value.isBlank() || value.contains("change-me");
     }
 }

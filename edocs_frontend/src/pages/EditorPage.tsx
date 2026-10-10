@@ -19,7 +19,7 @@ import { AppShell } from '../layouts/AppShell'
 import { Avatar, Badge, ErrorNote, Loading } from '../components/ui'
 import { Guarded, Menu, MenuItem } from '../components/overlay'
 import { ChangelogModal } from '../components/modals'
-import { api } from '../services/api'
+import { api, initials } from '../services/api'
 import { useResource } from '../lib/useResource'
 import { useAuth } from '../state/auth'
 import { useAction, useToast } from '../state/toast'
@@ -62,7 +62,7 @@ export default function EditorPage() {
     name: p.name,
     role: partyRoleLabel[p.role],
     presence: p.email === user?.email ? 'active' : p.signedAt ? 'away' : 'viewing',
-    initials: p.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || '?',
+    initials: initials(p.name),
   }))
   const [showRedlines, setShowRedlines] = useState(true)
   const [suggestionDismissed, setSuggestionDismissed] = useState(false)
