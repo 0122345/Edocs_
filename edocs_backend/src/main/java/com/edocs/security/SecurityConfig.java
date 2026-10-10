@@ -6,6 +6,8 @@ import java.util.List;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -44,6 +46,8 @@ import jakarta.servlet.http.HttpServletResponse;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
+
     private static final String[] PUBLIC = {
             "/auth/login", "/auth/mfa/verify", "/oauth2/**", "/login/oauth2/**",
             "/actuator/health/**", "/actuator/info", "/docs/**", "/swagger-ui/**", "/v3/api-docs/**", "/error"
@@ -66,7 +70,10 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .oauth2Login(o -> o
                         .successHandler(oauthSuccess)
-                        .failureHandler((req, res, ex) -> res.sendRedirect(props.frontendUrl() + "/login?error=oauth")))
+                        .failureHandler((req, res, ex) -> {
+                            log.warn("OAuth2 sign-in failed: {}", ex.getMessage());
+                            res.sendRedirect(props.frontendUrl() + "/login?error=oauth");
+                        }))
                 .oauth2ResourceServer(o -> o
                         .jwt(j -> j.jwtAuthenticationConverter(converter))
                         .authenticationEntryPoint(unauthorized()))
