@@ -50,10 +50,11 @@ Runs the API with in-process PostgreSQL, a MongoDB-wire server and an AMQP broke
 ### Option C: your own services
 
 ```bash
-export DB_URL=jdbc:postgresql://localhost:5432/edocs DB_USER=edocs DB_PASSWORD=edocs
-export MONGO_URI=mongodb://localhost:27017/edocs RABBIT_HOST=localhost
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+cp .env.example .env   # keys and connection settings, imported by application.yml
+./mvnw spring-boot:run
 ```
+
+`.env` is git-ignored; OS environment variables override it. With `DEMO_MFA_CODE` empty and `OTP_ECHO_IN_APP=false`, MFA and signing codes are delivered only by email through RabbitMQ, so read them in Mailpit (http://localhost:8025).
 
 ### Demo accounts (seeded on first start)
 
@@ -75,7 +76,7 @@ In the `dev` profile, signing codes are also copied to the in-app bell (`OTP_ECH
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | local `edocs` | PostgreSQL |
 | `MONGO_URI` | `mongodb://localhost:27017/edocs` | MongoDB |
 | `RABBIT_HOST`, `RABBIT_PORT`, `RABBIT_USER`, `RABBIT_PASSWORD` | localhost / guest | RabbitMQ |
-| `MAIL_HOST`, `MAIL_PORT` | localhost:1025 | SMTP (Mailpit in compose) |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM` | localhost:1025, `no-reply@edocs.local` | SMTP (Mailpit in compose) and sender address |
 | `JWT_SECRET` | dev value | HS256 signing key, at least 32 bytes. **Set in production.** |
 | `JWT_TTL` | `PT2H` | Access-token lifetime |
 | `MASTER_KEY` | dev value | Base64 AES-256 key-encryption key. **Set in production.** |
@@ -92,6 +93,7 @@ In the `dev` profile, signing codes are also copied to the in-app bell (`OTP_ECH
 - Unit tests: RBAC matrix (also checked against the frontend's `rbac.ts`), envelope encryption, hash chain tamper detection, Merkle roots, HTML sanitizing, signing-order rules, compliance evaluation.
 - `ContainersFlowTest`: end-to-end journeys on real PostgreSQL 17, MongoDB 8 and RabbitMQ 4 via Testcontainers. Runs whenever Docker is available, for example in CI.
 - `EmbeddedFlowTest`: the same journeys on in-process stand-ins. Runs only when Docker is not available.
+- `LocalInfraFlowTest`: the same journeys on locally installed PostgreSQL, MongoDB, RabbitMQ and Mailpit, using isolated `edocs_it` stores (database, Mongo database, vhost) that it wipes on each run. Run with `EDOCS_IT_LOCAL=true ./mvnw test -Dtest=LocalInfraFlowTest`.
 - Coverage report: `target/site/jacoco/index.html`.
 
 ## API
