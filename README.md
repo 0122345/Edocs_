@@ -353,6 +353,9 @@ cd edocs_frontend && npm test         # Vitest
 # Against real, locally running services
 EDOCS_IT_LOCAL=true ./mvnw test -Dtest=LocalInfraFlowTest            # backend journeys on local Postgres/Mongo/RabbitMQ/Mailpit
 EDOCS_LIVE_API=http://localhost:8080/api npm test                    # frontend API client against the running backend
+
+# Every backend suite in one run, none skipped (Docker running, local stores created)
+EDOCS_IT_LOCAL=true ./mvnw verify "-Djunit.jupiter.conditions.deactivate=org.junit.*DisabledIfCondition"
 ```
 
 Backend tests:
