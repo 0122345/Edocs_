@@ -411,7 +411,8 @@ Errors use a single JSON shape (`ErrorResponse`) produced by `GlobalExceptionHan
 | Symptom | Fix |
 | --- | --- |
 | `docker compose` fails on Windows | Install WSL 2 and start Docker Desktop, or use the no-Docker backend run (Option A above) |
-| Port 5173/8080/5432 already in use | Stop the other process or change the published port. Vite also accepts `npm run dev -- --port 3000`. |
+| `docker compose up --build` stops with `additional privileges requested: pass "--allow=fs.read=edocs_backend\\Dockerfile"` | Buildx Bake compares paths case-sensitively on Windows. `cd` into the folder with its exact casing (`D:\innovation\WEBTECH\Final_project`, not `d:\innovation\webtech\final_project`), or run `$env:COMPOSE_BAKE = "false"` first. |
+| Port 5173/8080/5432/27017/5672 already in use | Stop the other process (including locally started MongoDB/RabbitMQ/Mailpit) or change the published port. Vite also accepts `npm run dev -- --port 3000`. |
 | Frontend shows mock data while the backend is running | Set `VITE_API_BASE_URL` in `edocs_frontend/.env` and restart `npm run dev` |
 | CORS error in the browser | Add your frontend origin to `CORS_ORIGINS` |
 | No MFA or signing email | Open Mailpit at http://localhost:8025, or use the `dev` shortcuts (`246810`, notification bell) |
