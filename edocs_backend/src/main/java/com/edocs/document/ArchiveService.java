@@ -1,6 +1,7 @@
 package com.edocs.document;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -9,7 +10,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.cache.annotation.CacheEvict;
@@ -153,12 +153,15 @@ public class ArchiveService {
 
     // Average delay between a document's last signature and its anchor entry.
     private String anchorLag(UUID orgId) {
-        Map<String, AuditLog> lastSig = audit.forKind(orgId, AuditKind.SIGNATURE).stream()
+        Map<String, List<AuditLog>> sigs = audit.forKind(orgId, AuditKind.SIGNATURE).stream()
                 .filter(a -> a.getEntityId() != null)
-                .collect(Collectors.toMap(AuditLog::getEntityId, Function.identity(), (a, b) -> a.getAt().isAfter(b.getAt()) ? a : b));
+                .collect(Collectors.groupingBy(AuditLog::getEntityId));
+        // Each anchor is measured from the last signature made before it, not from later re-signs.
         double avg = audit.forKind(orgId, AuditKind.ANCHOR).stream()
-                .filter(a -> a.getEntityId() != null && lastSig.containsKey(a.getEntityId()))
-                .mapToLong(a -> Math.abs(Duration.between(lastSig.get(a.getEntityId()).getAt(), a.getAt()).toMillis()))
+                .filter(a -> a.getEntityId() != null && sigs.containsKey(a.getEntityId()))
+                .mapToLong(a -> sigs.get(a.getEntityId()).stream().map(AuditLog::getAt).filter(t -> !t.isAfter(a.getAt()))
+                        .max(Instant::compareTo).map(t -> Duration.between(t, a.getAt()).toMillis()).orElse(-1L))
+                .filter(ms -> ms >= 0)
                 .average().orElse(0);
         return String.format(Locale.US, "%.1f s avg", avg / 1000.0);
     }
