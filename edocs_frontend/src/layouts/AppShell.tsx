@@ -20,7 +20,6 @@ import {
   BellRing,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
-import { organization } from '../data/mock'
 import { Avatar } from '../components/ui'
 import { Menu, MenuItem } from '../components/overlay'
 import { InviteMemberModal, NewDocumentModal, ShareModal } from '../components/modals'
@@ -46,15 +45,16 @@ export interface ShellDocument {
 }
 
 function Sidebar({ onNavigate, onInvite }: { onNavigate?: () => void; onInvite: () => void }) {
-  const { can, logout } = useAuth()
+  const { user, can, logout } = useAuth()
   const navigate = useNavigate()
+  const { data: settings } = useResource(api.getSettings)
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto px-4 py-6">
       <div className="flex items-center gap-3 px-1">
         <span className="flex size-10 items-center justify-center rounded-md bg-ink font-semibold text-white">E</span>
         <div className="min-w-0 leading-tight">
-          <p className="truncate font-semibold">{organization.name}</p>
-          <p className="text-xs text-muted">{organization.tier}</p>
+          <p className="truncate font-semibold">{settings?.orgName ?? 'Edocs'}</p>
+          <p className="text-xs text-muted">{user ? roleLabels[user.role] : ''}</p>
         </div>
       </div>
 

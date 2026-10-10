@@ -7,7 +7,6 @@ import { Guarded } from '../components/overlay'
 import { api } from '../services/api'
 import { useResource } from '../lib/useResource'
 import { useAction } from '../state/toast'
-import { riskBands } from '../data/mock'
 import { cn } from '../lib/cn'
 
 /** What to do about a failing control, and where. */
@@ -18,6 +17,7 @@ const remediation: Record<string, { text: string; to: string; label: string }> =
 
 export default function CompliancePage() {
   const { data, error } = useResource(api.getComplianceControls)
+  const dashboard = useResource(api.getDashboard)
   const run = useAction()
   const [running, setRunning] = useState(false)
   const passing = data?.filter((c) => c.status === 'pass').length ?? 0
@@ -74,7 +74,7 @@ export default function CompliancePage() {
           <h2 id="risk-title" className="text-lg font-semibold tracking-tight">Full risk assessment</h2>
           <p className="mt-1 text-sm text-ink-2">AI clause analysis of active contracts this month, by risk band.</p>
           <dl className="mt-5 grid gap-3 sm:grid-cols-3">
-            {riskBands.monthly.map((b) => (
+            {dashboard.data?.riskBands.monthly.map((b) => (
               <div key={b.level} className="rounded-md border border-line bg-canvas p-4">
                 <dt className="text-sm text-ink-2">{b.label}</dt>
                 <dd className="mt-1 text-2xl font-semibold tabular-nums">{b.docs} <span className="text-sm font-normal text-muted">docs, {b.percent}%</span></dd>

@@ -26,10 +26,11 @@ import { useAction, useToast } from '../state/toast'
 import { downloadFile } from '../lib/download'
 import { cn } from '../lib/cn'
 import { escapeHtml, sanitizeDocumentHtml } from '../lib/sanitize'
-import { collaborators } from '../data/mock'
 import { statusLabel, statusTone } from './DocumentsPage'
+import type { Collaborator, Party } from '../data/types'
 
-const presenceLabel = { active: 'active', viewing: 'viewing', away: 'away' } as const
+const presenceLabel = { active: 'editing now', viewing: 'invited', away: 'signed' } as const
+const partyRoleLabel: Record<Party['role'], string> = { signer: 'Signer', approver: 'Approver', viewer: 'Viewer' }
 
 const GDPR_CLAUSE =
   '<h2>5. Data retention</h2><p>Personal data processed under this Agreement is retained for no longer than necessary for the purposes set out in Schedule B, and in any case no longer than six (6) years after termination, after which it is erased or anonymised in line with Article 5(1)(e) GDPR.</p>'
@@ -55,6 +56,14 @@ export default function EditorPage() {
   const commentBox = useRef<HTMLTextAreaElement>(null)
   const loadedFor = useRef<string | null>(null)
   const [draft, setDraft] = useState('')
+  // Collaborators are the document's parties; the signed-in user is the one actively editing.
+  const collaborators: Collaborator[] = (doc?.parties ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    role: partyRoleLabel[p.role],
+    presence: p.email === user?.email ? 'active' : p.signedAt ? 'away' : 'viewing',
+    initials: p.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || '?',
+  }))
   const [showRedlines, setShowRedlines] = useState(true)
   const [suggestionDismissed, setSuggestionDismissed] = useState(false)
   const [hasRetention, setHasRetention] = useState(false)

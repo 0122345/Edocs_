@@ -76,7 +76,19 @@ function requirePermission(permission: Permission) {
 // --------------------------------------------------------------------------
 // Transport
 // --------------------------------------------------------------------------
+// Remote mode has no in-browser DB to watch, so screens reload after every successful write instead.
+const remoteListeners = new Set<() => void>()
+function emitRemoteChange() {
+  remoteListeners.forEach((l) => l())
+}
+if (!isMockMode && typeof document !== 'undefined') {
+  // Pick up changes other people made: on returning to the tab, and every 30 s while it is visible.
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && emitRemoteChange())
+  setInterval(() => document.visibilityState === 'visible' && currentSession && emitRemoteChange(), 30_000)
+}
+
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = init?.method ?? 'GET'
   const res = await fetch(`${BASE_URL}${path}`, {
     credentials: 'include',
     ...init,
@@ -88,9 +100,21 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { message?: string } | null
-    throw new ApiError(body?.message ?? `${init?.method ?? 'GET'} ${path} failed with ${res.status}`, res.status)
+    // An expired or revoked token ends the session everywhere in the app.
+    if (res.status === 401 && currentSession && !path.startsWith('/auth/')) {
+      currentSession = null
+      writeSession(null)
+      emitRemoteChange()
+    }
+    throw new ApiError(body?.message ?? `${method} ${path} failed with ${res.status}`, res.status)
   }
-  return res.status === 204 ? (undefined as T) : ((await res.json()) as T)
+  const data = res.status === 204 ? (undefined as T) : ((await res.json()) as T)
+  if (method !== 'GET') {
+    emitRemoteChange()
+    // Notifications are written by RabbitMQ consumers a moment after the request returns.
+    setTimeout(emitRemoteChange, 1500)
+  }
+  return data
 }
 
 async function call<T>(remote: () => Promise<T>, mock: () => T | Promise<T>): Promise<T> {
@@ -170,8 +194,14 @@ export function workflowSteps(doc: DocumentRecord): WorkflowStep[] {
 export type LoginResult = { kind: 'session'; session: Session } | { kind: 'mfa'; challengeId: string; email: string }
 
 export const api = {
-  /** Re-render hook for screens: fires after every mock write. A real backend would push via WebSocket/SSE. */
-  subscribe: (listener: () => void) => db.subscribe(listener),
+  /** Re-render hook for screens: fires after every write (mock DB or backend) and when the tab regains focus. */
+  subscribe: (listener: () => void) => {
+    if (isMockMode) return db.subscribe(listener)
+    remoteListeners.add(listener)
+    return () => {
+      remoteListeners.delete(listener)
+    }
+  },
 
   // ---------------- Auth (OAuth2 / OIDC + MFA) ----------------
   session: () => currentSession,
