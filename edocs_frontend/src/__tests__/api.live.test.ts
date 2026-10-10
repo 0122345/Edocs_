@@ -67,7 +67,8 @@ describe.skipIf(!LIVE)('live backend', () => {
     const saved = await api.saveDocument(doc.id, '<p>Edited from the live client test.</p>', 'live test')
     expect(saved.version).toBe(2)
     expect((await api.sendForSignature(doc.id)).status).toBe('out_for_signature')
-    expect(changes).toHaveBeenCalledTimes(3)
+    // One immediate refresh per write; the delayed follow-up refreshes may also land on a slow backend.
+    expect(changes.mock.calls.length).toBeGreaterThanOrEqual(3)
     off()
     expect((await api.listDocuments()).some((d) => d.id === doc.id)).toBe(true)
     expect((await api.getDashboard()).kpis).toHaveLength(4)
