@@ -19,7 +19,7 @@ import com.edocs.security.AuthUser;
 
 class SigningRulesTest {
 
-    private final SigningService service = new SigningService(null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    private final SigningService service = new SigningService(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     private Contract contract;
     private Party first;
     private Party second;
