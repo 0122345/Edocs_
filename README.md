@@ -364,6 +364,8 @@ Backend tests:
 
 Frontend tests: `npm test` always runs the unit tests on mock data (Vitest pins `VITE_API_BASE_URL` to empty). `api.live.test.ts` drives the real client against a running backend when `EDOCS_LIVE_API` is set: MFA sign-in with the emailed code, create/edit/send, signing with the emailed OTP, RBAC and token revocation. It reads codes from Mailpit (`EDOCS_MAILPIT`, default `http://localhost:8025`).
 
+**Testing single sign-on without real Google/Microsoft credentials.** Run a local OpenID Connect provider (`docker run -d -p 8090:8080 ghcr.io/navikt/mock-oauth2-server:2.1.10`) and point the `google` registration at it with `GOOGLE_CLIENT_ID`/`SECRET` (any value) plus `SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_ISSUER_URI`, `_AUTHORIZATION_URI`, `_TOKEN_URI`, `_JWK_SET_URI` and `_USER_INFO_URI` (`http://localhost:8090/google/...`; from inside compose, use `host.docker.internal` for everything except the browser-facing authorization URI) and `_USER_NAME_ATTRIBUTE=sub`. On the provider's sign-in page, enter claims such as `{"email":"s.jenkins@acme.corp","email_verified":true}`. Add `"amr":["mfa"]` for members with MFA. A failed exchange is logged as `OAuth2 sign-in failed: ...`.
+
 GitHub Actions (`.github/workflows/ci.yml`) runs on pushes to `main`, `frontend` and `backend`, and on PRs into `main`:
 
 1. **Backend**: JDK 21, `./mvnw -B verify`, uploads Surefire and JaCoCo reports.

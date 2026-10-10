@@ -26,7 +26,7 @@ async function clearMail(to: string) {
   await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`, { method: 'DELETE' })
 }
 
-describe.skipIf(!LIVE)('live backend', () => {
+describe.skipIf(!LIVE)('live backend', { timeout: 30_000 }, () => {
   beforeAll(async () => {
     vi.stubEnv('VITE_API_BASE_URL', LIVE!)
     vi.resetModules()
@@ -35,7 +35,8 @@ describe.skipIf(!LIVE)('live backend', () => {
   afterAll(() => vi.unstubAllEnvs())
 
   it('rejects a wrong password with the server message', async () => {
-    await expect(api.login('s.jenkins@acme.corp', 'wrong-password')).rejects.toMatchObject({ status: 401 })
+    // An unknown address gets the same 401 without counting towards a real member's lockout.
+    await expect(api.login(`nobody.${Date.now()}@acme.corp`, 'wrong-password')).rejects.toMatchObject({ status: 401 })
   })
 
   it('signs the administrator in with the MFA code delivered by email', async () => {
