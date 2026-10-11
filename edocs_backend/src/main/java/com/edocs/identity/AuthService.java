@@ -88,6 +88,9 @@ public class AuthService {
         user.setFailedLoginAttempts(0);
         user.setLockedUntil(null);
         Membership m = activeMembership(user);
+        if (!user.isEmailVerified()) {
+            return sendVerification(user, m);
+        }
         if (user.isMfaEnabled()) {
             OtpService.Issued issued = otps.issue(user.getId(), null, OtpChallenge.Purpose.MFA);
             notifications.send(m.getOrganization().getId(), Recipient.user(user.getId(), user.getEmail()), NotificationType.OTP, Channel.EMAIL,
@@ -107,11 +110,15 @@ public class AuthService {
             throw ApiException.unauthorized("That code is incorrect. Check your authenticator app and try again.");
         }
         OtpChallenge challenge = challenges.findById(id)
-                .filter(c -> c.getPurpose() == OtpChallenge.Purpose.MFA)
+                .filter(c -> c.getPurpose() == OtpChallenge.Purpose.MFA || c.getPurpose() == OtpChallenge.Purpose.VERIFY)
                 .orElseThrow(() -> ApiException.unauthorized("That sign-in attempt has expired. Sign in again."));
-        otps.verify(challenge.getId(), code, props.security().demoMfaCode());
+        boolean verifying = challenge.getPurpose() == OtpChallenge.Purpose.VERIFY;
+        otps.verify(challenge.getId(), code, verifying ? null : props.security().demoMfaCode());
         User user = users.findById(challenge.getUserId()).orElseThrow();
-        return startSession(user, activeMembership(user), "password+mfa");
+        if (verifying) {
+            user.setEmailVerified(true);
+        }
+        return startSession(user, activeMembership(user), verifying ? "email verified" : "password+mfa");
     }
 
     // Called after a successful OAuth2 authorization-code login; only invited members may sign in.
@@ -126,6 +133,8 @@ public class AuthService {
         if (user.isMfaEnabled() && !idpMfa) {
             throw ApiException.forbidden("Your account requires MFA. Sign in with your password and code.");
         }
+        // The provider vouched for the address, which also completes a pending sign-up.
+        user.setEmailVerified(true);
         return startSession(user, activeMembership(user), "oauth2");
     }
 
@@ -139,6 +148,15 @@ public class AuthService {
                 .orElseThrow(() -> ApiException.unauthorized("Your session has ended. Sign in again."));
     }
 
+    // Emails a one-time code that proves the sign-up owns the address; /auth/mfa/verify completes it.
+    LoginResponse sendVerification(User user, Membership m) {
+        OtpService.Issued issued = otps.issue(user.getId(), null, OtpChallenge.Purpose.VERIFY);
+        notifications.send(m.getOrganization().getId(), Recipient.user(user.getId(), user.getEmail()), NotificationType.OTP, Channel.EMAIL,
+                "Confirm your email", "A confirmation code was emailed to you.", null,
+                "Your Edocs confirmation code is " + issued.code() + ". It expires in " + props.otp().ttl().toMinutes() + " minutes.");
+        return LoginResponse.verify(issued.challenge().getId().toString(), user.getEmail());
+    }
+
     private SessionDto startSession(User user, Membership m, String method) {
         user.setLastLogin(Instant.now());
         users.save(user);
@@ -148,7 +166,7 @@ public class AuthService {
         return new SessionDto(jwt.issue(principal), UserDto.of(m));
     }
 
-    private Membership activeMembership(User user) {
+    Membership activeMembership(User user) {
         return memberships.findByUserId(user.getId()).stream().filter(Membership::isActive).findFirst()
                 .orElseThrow(() -> ApiException.forbidden("This account is deactivated. Ask an administrator to reactivate it."));
     }

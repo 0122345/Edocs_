@@ -56,8 +56,6 @@ import com.edocs.notification.NotificationService.Recipient;
 import com.edocs.notification.NotificationType;
 import com.edocs.signing.Signature;
 import com.edocs.signing.SignatureRepository;
-import com.edocs.workflow.RoutingRule;
-import com.edocs.workflow.RoutingRuleRepository;
 import com.edocs.workflow.Workflow;
 import com.edocs.workflow.WorkflowService;
 
@@ -75,18 +73,18 @@ public class DemoDataSeeder implements ApplicationRunner {
     private final DocumentRepository documents;
     private final DocumentContentRepository contents;
     private final SignatureRepository signatures;
-    private final RoutingRuleRepository rules;
     private final ComplianceControlRepository controls;
     private final WorkflowService workflows;
     private final AuditService audit;
     private final NotificationService notifications;
     private final EnvelopeCrypto crypto;
     private final PasswordEncoder encoder;
+    private final WorkspaceProvisioner provisioner;
 
     public DemoDataSeeder(EdocsProperties props, OrganizationRepository organizations, UserRepository users, MembershipRepository memberships,
             TemplateRepository templates, DocumentRepository documents, DocumentContentRepository contents, SignatureRepository signatures,
-            RoutingRuleRepository rules, ComplianceControlRepository controls, WorkflowService workflows, AuditService audit,
-            NotificationService notifications, EnvelopeCrypto crypto, PasswordEncoder encoder) {
+            ComplianceControlRepository controls, WorkflowService workflows, AuditService audit,
+            NotificationService notifications, EnvelopeCrypto crypto, PasswordEncoder encoder, WorkspaceProvisioner provisioner) {
         this.props = props;
         this.organizations = organizations;
         this.users = users;
@@ -95,13 +93,13 @@ public class DemoDataSeeder implements ApplicationRunner {
         this.documents = documents;
         this.contents = contents;
         this.signatures = signatures;
-        this.rules = rules;
         this.controls = controls;
         this.workflows = workflows;
         this.audit = audit;
         this.notifications = notifications;
         this.crypto = crypto;
         this.encoder = encoder;
+        this.provisioner = provisioner;
     }
 
     @Override
@@ -182,10 +180,7 @@ public class DemoDataSeeder implements ApplicationRunner {
             signatureRows(c, admin);
         }
 
-        rules.save(new RoutingRule(org, "fast-track-nda", "Fast-track low-risk NDAs", "Skip legal review when the AI risk score is low and the template is unmodified.", false));
-        rules.save(new RoutingRule(org, "escalate-review", "Escalate stalled legal reviews", "Notify the legal lead when a review waits more than 2 days.", true));
-        rules.save(new RoutingRule(org, "parallel-kyc", "Run KYC in parallel", "Start identity checks for external signers while legal review is still open.", false));
-        rules.save(new RoutingRule(org, RoutingRule.ROUTE_HIGH_VALUE_TO_CFO, "Route high-value contracts to the CFO", "Add a CFO approval step when contract value exceeds $250,000.", true));
+        provisioner.saveRoutingRules(org);
 
         Instant now = Instant.now();
         control(org, ComplianceService.EIDAS, "eIDAS qualified signatures", "eIDAS", ComplianceControl.Status.PASS, now.minusSeconds(7200));

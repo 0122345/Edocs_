@@ -51,7 +51,7 @@ public class SecurityConfig {
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
     private static final String[] PUBLIC = {
-            "/auth/login", "/auth/mfa/verify", "/oauth2/**", "/login/oauth2/**",
+            "/auth/login", "/auth/mfa/verify", "/auth/signup", "/auth/password/forgot", "/auth/password/reset", "/oauth2/**", "/login/oauth2/**",
             "/actuator/health/**", "/actuator/info", "/docs/**", "/swagger-ui/**", "/v3/api-docs/**", "/error"
     };
 

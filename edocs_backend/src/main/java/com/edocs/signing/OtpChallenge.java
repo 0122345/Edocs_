@@ -21,7 +21,7 @@ import lombok.Setter;
 @Table(name = "otp_challenges")
 public class OtpChallenge {
 
-    public enum Purpose { MFA, SIGNING }
+    public enum Purpose { MFA, SIGNING, VERIFY, RESET }
 
     @Id
     @Column(name = "challenge_id")

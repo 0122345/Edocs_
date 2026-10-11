@@ -48,6 +48,10 @@ public class User extends Person {
     @Column(name = "locked_until")
     private Instant lockedUntil;
 
+    // False only for self-service sign-ups until the emailed code is entered.
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

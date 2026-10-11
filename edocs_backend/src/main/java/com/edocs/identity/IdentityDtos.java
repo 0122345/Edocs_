@@ -27,7 +27,7 @@ public final class IdentityDtos {
     public record SessionDto(String token, UserDto user) {
     }
 
-    // kind = "session" (signed in) or "mfa" (a code was sent; call /auth/mfa/verify).
+    // kind = "session" (signed in), "mfa" (sign-in code sent) or "verify" (email confirmation code sent); both codes go to /auth/mfa/verify.
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record LoginResponse(String kind, SessionDto session, String challengeId, String email) {
 
@@ -38,9 +38,27 @@ public final class IdentityDtos {
         public static LoginResponse mfa(String challengeId, String email) {
             return new LoginResponse("mfa", null, challengeId, email);
         }
+
+        public static LoginResponse verify(String challengeId, String email) {
+            return new LoginResponse("verify", null, challengeId, email);
+        }
     }
 
     public record LoginRequest(@NotBlank @Email @Size(max = 254) String email, @NotBlank @Size(max = 128) String password) {
+    }
+
+    public record SignupRequest(@NotBlank @Size(max = 160) String orgName, @NotBlank @Size(max = 120) String name,
+            @NotBlank @Email @Size(max = 254) String email, @NotBlank @Size(max = 128) String password) {
+    }
+
+    public record ChangePasswordRequest(@NotBlank @Size(max = 128) String currentPassword, @NotBlank @Size(max = 128) String newPassword) {
+    }
+
+    public record ForgotPasswordRequest(@NotBlank @Email @Size(max = 254) String email) {
+    }
+
+    public record ResetPasswordRequest(@NotBlank @Email @Size(max = 254) String email, @NotBlank @Size(max = 12) String code,
+            @NotBlank @Size(max = 128) String newPassword) {
     }
 
     public record MfaVerifyRequest(@NotBlank String challengeId, @NotBlank @Size(max = 12) String code) {

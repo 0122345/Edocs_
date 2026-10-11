@@ -67,6 +67,10 @@ public class MemberService {
         }
         String tempPassword = null;
         User user = users.findByEmail(normalized).orElse(null);
+        // Roles are per account, so one account belongs to one workspace; otherwise an admin here could change it elsewhere.
+        if (user != null && !memberships.findByUserId(user.getId()).isEmpty()) {
+            throw ApiException.conflict(normalized + " already belongs to another Edocs workspace.");
+        }
         if (user == null) {
             String display = name == null || name.isBlank() ? normalized.substring(0, normalized.indexOf('@')) : name.trim();
             user = new User(display, normalized, role);
@@ -77,7 +81,7 @@ public class MemberService {
         Membership m = memberships.save(new Membership(user, organizations.getReferenceById(me.orgId()), LocalDate.now(ZoneOffset.UTC)));
         String orgName = organizations.findById(me.orgId()).map(Organization::getName).orElse("Edocs");
         String wire = me.name() + " invited you to " + orgName + " on Edocs as " + role.name().toLowerCase() + "."
-                + (tempPassword == null ? " Sign in with your existing account." : " Temporary password: " + tempPassword + " (change it after signing in).")
+                + (tempPassword == null ? " Sign in with your existing account." : " Temporary password: " + tempPassword + " (change it under Settings → Password after signing in).")
                 + " " + props.frontendUrl() + "/login";
         notifications.send(me.orgId(), Recipient.user(user.getId(), user.getEmail()), NotificationType.INVITE, Channel.EMAIL,
                 "You're invited to " + orgName, "You were invited to " + orgName + ".", "/login", wire);

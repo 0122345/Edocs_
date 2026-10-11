@@ -71,7 +71,7 @@ public class ComplianceService {
         return list();
     }
 
-    static boolean evaluate(String code, Organization org, List<Document> docs, List<Membership> members) {
+    public static boolean evaluate(String code, Organization org, List<Document> docs, List<Membership> members) {
         return switch (code) {
             case EIDAS -> org.getSignatureLevel() == SignatureLevel.QES;
             case ESIGN -> true;
