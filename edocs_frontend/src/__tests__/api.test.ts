@@ -80,3 +80,32 @@ describe('signing', () => {
     expect(db.get().notifications[0]?.type).toBe('signed')
   })
 })
+
+describe('self-service accounts', () => {
+  const newcomer = { orgName: 'NewCo', name: 'Nia Founder', email: 'nia@newco.example', password: 'Launch2026rocket' }
+
+  it('signs up an administrator who must confirm the email first', async () => {
+    await expect(api.signup({ ...newcomer, password: 'short1' })).rejects.toThrow('at least 10 characters')
+    const r = await api.signup(newcomer)
+    expect(r.kind).toBe('verify')
+    if (r.kind === 'session') return
+    expect((await api.login(newcomer.email, newcomer.password)).kind).toBe('verify')
+    const session = await api.verifyMfa(r.challengeId, DEMO_MFA_CODE)
+    expect(session.user.role).toBe('admin')
+    await api.logout()
+    expect((await api.login(newcomer.email, newcomer.password)).kind).toBe('session')
+    await expect(api.signup(newcomer)).rejects.toThrow('already exists')
+  })
+
+  it('changes and resets a password', async () => {
+    await signInAs('s.jenkins@acme.corp')
+    await expect(api.changePassword('wrong-password', 'Replaced2026pw')).rejects.toThrow('current password is incorrect')
+    await api.changePassword(DEMO_PASSWORD, 'Replaced2026pw')
+    await api.logout()
+    await expect(api.login('s.jenkins@acme.corp', DEMO_PASSWORD)).rejects.toThrow('incorrect')
+    await api.requestPasswordReset('s.jenkins@acme.corp')
+    await expect(api.resetPassword('s.jenkins@acme.corp', '000000', 'Recovered2026now')).rejects.toThrow('wrong or has expired')
+    await api.resetPassword('s.jenkins@acme.corp', DEMO_MFA_CODE, 'Recovered2026now')
+    expect((await api.login('s.jenkins@acme.corp', 'Recovered2026now')).kind).toBe('session')
+  })
+})

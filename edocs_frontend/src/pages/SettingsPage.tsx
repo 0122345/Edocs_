@@ -4,10 +4,10 @@ import { AppShell } from '../layouts/AppShell'
 import { Avatar, Badge, ErrorNote, Loading, PageHeader } from '../components/ui'
 import { Guarded } from '../components/overlay'
 import { ConfirmModal, InviteMemberModal } from '../components/modals'
-import { api, isMockMode } from '../services/api'
+import { api, isMockMode, passwordProblem } from '../services/api'
 import { useResource } from '../lib/useResource'
 import { useAuth } from '../state/auth'
-import { useAction } from '../state/toast'
+import { useAction, useToast } from '../state/toast'
 import { permissionsFor, roleDescriptions, roleLabels, type Permission } from '../lib/rbac'
 import type { Role, WorkspaceSettings } from '../data/types'
 
@@ -26,6 +26,44 @@ const permissionLabels: Record<Permission, string> = {
   'settings:manage': 'Change workspace settings and legal holds',
 }
 const roles = Object.keys(roleLabels) as Role[]
+
+function ChangePasswordForm({ email }: { email: string }) {
+  const toast = useToast()
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    const issue = next !== confirm ? 'The new passwords don’t match.' : passwordProblem(next, email)
+    setProblem(issue)
+    if (issue) return
+    try {
+      await api.changePassword(current, next)
+      toast('Password changed.')
+      setCurrent('')
+      setNext('')
+      setConfirm('')
+    } catch (err) {
+      setProblem(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-6 grid gap-4 border-t border-line pt-5 sm:grid-cols-3" aria-labelledby="pw-title">
+      <h3 id="pw-title" className="font-semibold sm:col-span-3">Change password</h3>
+      {problem && <p role="alert" className="rounded-md bg-alert-soft px-3 py-2 text-sm text-alert sm:col-span-3">{problem}</p>}
+      <label className="text-sm">Current password<input type="password" required autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} className="field mt-1.5" /></label>
+      <label className="text-sm">New password<input type="password" required minLength={10} autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} className="field mt-1.5" /></label>
+      <label className="text-sm">Confirm new password<input type="password" required minLength={10} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="field mt-1.5" /></label>
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-3">
+        <p className="text-xs text-muted">At least 10 characters, with letters and numbers. Invited members should replace their emailed temporary password here.</p>
+        <button type="submit" className="btn btn-primary">Change password</button>
+      </div>
+    </form>
+  )
+}
 
 export default function SettingsPage() {
   const { user, can } = useAuth()
@@ -118,6 +156,7 @@ export default function SettingsPage() {
               </label>
             </div>
           ) : <Loading />}
+          <ChangePasswordForm email={user?.email ?? ''} />
         </section>
 
         {/* Members */}

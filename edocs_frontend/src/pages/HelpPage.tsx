@@ -7,7 +7,11 @@ import type { Role } from '../data/types'
 
 const endpoints: [string, string, string][] = [
   ['POST', '/auth/login', 'Email + password sign-in; returns a session or an MFA challenge'],
-  ['POST', '/auth/mfa/verify', 'Completes sign-in with a 6-digit code'],
+  ['POST', '/auth/mfa/verify', 'Completes sign-in, or confirms a new account, with a 6-digit code'],
+  ['POST', '/auth/signup', 'Creates a workspace with you as administrator; returns a confirmation challenge'],
+  ['POST', '/auth/password', 'Changes your own password'],
+  ['POST', '/auth/password/forgot', 'Emails a password reset code if the account exists'],
+  ['POST', '/auth/password/reset', 'Sets a new password with the emailed reset code'],
   ['GET', '/oauth2/authorization/{google|microsoft}', 'Starts the OAuth2 / OIDC single sign-on flow'],
   ['GET', '/documents', 'Documents visible to the caller'],
   ['POST', '/documents', 'Create a document from a template'],

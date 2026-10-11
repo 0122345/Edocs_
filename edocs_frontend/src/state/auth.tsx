@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, isMockMode, type LoginResult } from '../services/api'
+import { api, isMockMode, type LoginResult, type SignupInput } from '../services/api'
 import { db } from '../services/mockDb'
 import { can, type Permission } from '../lib/rbac'
 import type { User } from '../data/types'
@@ -7,6 +7,7 @@ import type { User } from '../data/types'
 interface AuthValue {
   user: User | null
   login: (email: string, password: string) => Promise<LoginResult>
+  signup: (input: SignupInput) => Promise<LoginResult>
   verifyMfa: (challengeId: string, code: string) => Promise<void>
   loginWithProvider: (provider: 'google' | 'microsoft') => Promise<void>
   logout: () => Promise<void>
@@ -43,6 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result
   }, [])
 
+  const signup = useCallback((input: SignupInput) => api.signup(input), [])
+
   const verifyMfa = useCallback(async (challengeId: string, code: string) => {
     setUser((await api.verifyMfa(challengeId, code)).user)
   }, [])
@@ -57,8 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthValue>(
-    () => ({ user, login, verifyMfa, loginWithProvider, logout, can: (p) => can(user?.role, p) }),
-    [user, login, verifyMfa, loginWithProvider, logout],
+    () => ({ user, login, signup, verifyMfa, loginWithProvider, logout, can: (p) => can(user?.role, p) }),
+    [user, login, signup, verifyMfa, loginWithProvider, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

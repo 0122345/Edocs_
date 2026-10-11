@@ -26,6 +26,10 @@ export interface DbState {
   settings: WorkspaceSettings
   /** Pending one-time passwords keyed by document id. */
   otps: Record<string, string>
+  /** Passwords chosen in this browser (sign-up, change, reset), keyed by user id; others use the demo password. */
+  passwords: Record<string, string>
+  /** Accounts created by sign-up whose email has not been confirmed yet. */
+  unverified: Record<string, true>
 }
 
 const STORAGE_KEY = 'edocs.mockdb.v1'
@@ -41,6 +45,8 @@ function seedState(): DbState {
     routingRules: seed.seedRoutingRules,
     settings: seed.seedSettings,
     otps: {},
+    passwords: {},
+    unverified: {},
   })
 }
 
