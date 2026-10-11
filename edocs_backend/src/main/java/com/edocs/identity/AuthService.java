@@ -133,8 +133,10 @@ public class AuthService {
         if (user.isMfaEnabled() && !idpMfa) {
             throw ApiException.forbidden("Your account requires MFA. Sign in with your password and code.");
         }
-        // The provider vouched for the address, which also completes a pending sign-up.
-        user.setEmailVerified(true);
+        // An unconfirmed sign-up carries a password someone else may have chosen, so SSO must not adopt it; signing up again replaces it.
+        if (!user.isEmailVerified()) {
+            throw ApiException.forbidden("This email has an unconfirmed sign-up. Enter the code we emailed, or create your workspace again.");
+        }
         return startSession(user, activeMembership(user), "oauth2");
     }
 
