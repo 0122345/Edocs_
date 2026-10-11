@@ -1,6 +1,7 @@
 package com.edocs;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -31,6 +32,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import com.edocs.common.ApiException;
+import com.edocs.identity.AuthService;
 import com.edocs.notification.NotificationService;
 import com.edocs.notification.NotificationService.Recipient;
 import com.jayway.jsonpath.JsonPath;
@@ -61,6 +64,9 @@ abstract class AbstractFlowTest {
     // Codes and temporary passwords only travel inside emails, so the journeys read them from the outgoing wire body.
     @MockitoSpyBean
     NotificationService notifications;
+
+    @Autowired
+    AuthService auth;
 
     private String login(String email) throws Exception {
         String body = mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
@@ -312,6 +318,9 @@ abstract class AbstractFlowTest {
         mvc.perform(publicPost("/auth/signup", signup("Second try", pending, password))).andExpect(status().isCreated());
         assertThat(jdbc.queryForObject("select count(*) from users where email = ?", Integer.class, pending)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from organizations where admin_email = ?", Integer.class, pending)).isEqualTo(1);
+
+        // SSO for that address must not adopt the unconfirmed account, whose password the real owner never chose.
+        assertThatThrownBy(() -> auth.loginWithProvider(pending, false)).isInstanceOf(ApiException.class).hasMessageContaining("unconfirmed sign-up");
     }
 
     private MockHttpServletRequestBuilder publicPost(String path, String body) {
