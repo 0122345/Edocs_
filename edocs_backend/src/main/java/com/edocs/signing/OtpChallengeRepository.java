@@ -12,4 +12,6 @@ public interface OtpChallengeRepository extends JpaRepository<OtpChallenge, UUID
             select c from OtpChallenge c where c.userId = :userId and c.purpose = com.edocs.signing.OtpChallenge.Purpose.SIGNING
               and c.documentId = :docId and c.consumedAt is null order by c.createdAt desc limit 1""")
     Optional<OtpChallenge> findLatestSigning(UUID userId, UUID docId);
+
+    Optional<OtpChallenge> findFirstByUserIdAndPurposeOrderByCreatedAtDesc(UUID userId, OtpChallenge.Purpose purpose);
 }

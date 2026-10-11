@@ -8,10 +8,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.edocs.identity.IdentityDtos.ChangePasswordRequest;
+import com.edocs.identity.IdentityDtos.ForgotPasswordRequest;
 import com.edocs.identity.IdentityDtos.LoginRequest;
 import com.edocs.identity.IdentityDtos.LoginResponse;
 import com.edocs.identity.IdentityDtos.MfaVerifyRequest;
+import com.edocs.identity.IdentityDtos.ResetPasswordRequest;
 import com.edocs.identity.IdentityDtos.SessionDto;
+import com.edocs.identity.IdentityDtos.SignupRequest;
 import com.edocs.identity.IdentityDtos.UserDto;
 import com.edocs.security.AuthUserAuthentication;
 import com.edocs.security.CurrentUser;
@@ -25,9 +29,36 @@ import jakarta.validation.Valid;
 public class AuthController {
 
     private final AuthService auth;
+    private final AccountService accounts;
 
-    public AuthController(AuthService auth) {
+    public AuthController(AuthService auth, AccountService accounts) {
         this.auth = auth;
+        this.accounts = accounts;
+    }
+
+    // Creates a new workspace with the caller as its administrator; returns kind "verify" until the emailed code is entered.
+    @PostMapping("/signup")
+    @ResponseStatus(HttpStatus.CREATED)
+    public LoginResponse signup(@Valid @RequestBody SignupRequest req) {
+        return accounts.signup(req.orgName(), req.name(), req.email(), req.password());
+    }
+
+    @PostMapping("/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(@Valid @RequestBody ChangePasswordRequest req) {
+        accounts.changePassword(req.currentPassword(), req.newPassword());
+    }
+
+    @PostMapping("/password/forgot")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+        accounts.requestPasswordReset(req.email());
+    }
+
+    @PostMapping("/password/reset")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        accounts.resetPassword(req.email(), req.code(), req.newPassword());
     }
 
     @PostMapping("/login")

@@ -130,9 +130,24 @@ The backend allows CORS from ports 5173, 4173 and 3000 by default. If you serve 
 
 ---
 
+## Accounts and roles
+
+Anyone can create an account. **Create a workspace** on the sign-in page creates a new organization with you as its **Administrator**. Your email is confirmed with a 6-digit code delivered through RabbitMQ and SMTP (in Mailpit locally), and the account can't be used until it is confirmed. A new workspace starts with five templates, the six compliance controls and the default routing rules. It sees none of the other workspaces' data.
+
+Everyone else joins by invitation, which is how roles are assigned:
+
+1. The administrator opens **Settings → Members → Invite** and picks a role: Administrator, Legal counsel, Signer or Auditor.
+2. The invitee receives an email with a one-time temporary password.
+3. After signing in, they replace it under **Settings → Your account → Change password**.
+4. The administrator can change a member's role or deactivate them at any time; the change applies on the member's next request.
+
+What each role may do is listed in the permission matrix on the Settings page, and the API enforces the same matrix (`RolePermissions.java`, mirrored in `rbac.ts`). An account belongs to exactly one workspace, so inviting an email that already belongs to another workspace is refused.
+
+**Forgot password** on the sign-in page emails a reset code. The response is the same whether or not the account exists. Passwords need at least 10 characters with letters and numbers, and must not contain the email address.
+
 ## Demo accounts
 
-These accounts are seeded on first start, both in the backend and in mock mode. They all use the password **`Demo@2026`**.
+With demo seeding on (the `dev` profile, docker compose, or `SEED_DEMO_DATA=true`), these accounts are created on first start, both in the backend and in mock mode. They all use the password **`Demo@2026`**.
 
 | Role | Email | What to try |
 | --- | --- | --- |
@@ -239,8 +254,8 @@ draft ──▶ in_review ──▶ out_for_signature ──▶ signed ──▶
 
 ### 1. Signing in
 
-1. `POST /auth/login` checks the email and BCrypt password. After 5 failures the account is locked for 15 minutes, and each IP is limited to 20 attempts per minute.
-2. If the member has MFA turned on, the response asks for a code, which is emailed. `POST /auth/mfa/verify` completes the login.
+1. `POST /auth/login` checks the email and BCrypt password. After 5 failures the account is locked for 15 minutes, and each IP is limited to 20 attempts per minute. An account created by `POST /auth/signup` whose email isn't confirmed yet gets a confirmation code instead of a session.
+2. If the member has MFA turned on, the response asks for a code, which is emailed. `POST /auth/mfa/verify` completes the login, and also takes the confirmation code of a new sign-up.
 3. The API returns a signed **HS256 JWT** (2-hour lifetime). The SPA sends it as `Authorization: Bearer …` on every request.
 4. `POST /auth/logout` adds the token ID to a denylist until the token expires.
 5. **SSO**: `/api/oauth2/authorization/{google|microsoft}` runs the OAuth2 authorization-code flow. Only a provider-verified email can link to an invited member. Members with MFA turned on need the IdP to assert `amr=mfa`. The Edocs JWT is returned in the URL fragment and bound to the browser tab that started the login.
@@ -390,7 +405,8 @@ All paths are relative to `/api`. The full interactive reference is at `/api/doc
 
 | Method | Path | Requires |
 | --- | --- | --- |
-| POST | `/auth/login`, `/auth/mfa/verify` | public, rate limited |
+| POST | `/auth/login`, `/auth/mfa/verify`, `/auth/signup`, `/auth/password/forgot`, `/auth/password/reset` | public, rate limited |
+| POST | `/auth/password` (change your own password) | signed in |
 | GET | `/oauth2/authorization/{google\|microsoft}` | public |
 | GET / POST | `/auth/me`, `/auth/logout` | signed in |
 | GET | `/dashboard`, `/templates`, `/settings`, `/members`, `/notifications`, `/compliance/controls`, `/workflow/routing-rules`, `/archive/metrics` | signed in |

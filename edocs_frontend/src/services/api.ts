@@ -118,7 +118,9 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(body?.message ?? `${method} ${path} failed with ${res.status}`, res.status)
   }
-  const data = res.status === 204 ? (undefined as T) : ((await res.json()) as T)
+  // 202 and 204 responses carry no body.
+  const text = await res.text()
+  const data = (text ? JSON.parse(text) : undefined) as T
   if (method !== 'GET' && !path.startsWith('/auth/')) emitRemoteChange()
   return data
 }
@@ -197,7 +199,22 @@ export function workflowSteps(doc: DocumentRecord): WorkflowStep[] {
 // --------------------------------------------------------------------------
 // API
 // --------------------------------------------------------------------------
-export type LoginResult = { kind: 'session'; session: Session } | { kind: 'mfa'; challengeId: string; email: string }
+export type LoginResult = { kind: 'session'; session: Session } | { kind: 'mfa' | 'verify'; challengeId: string; email: string }
+
+export interface SignupInput {
+  orgName: string
+  name: string
+  email: string
+  password: string
+}
+
+/** Same rule the backend enforces, so the form can explain it before submitting. */
+export function passwordProblem(password: string, email = ''): string | null {
+  if (password.length < 10 || !/[a-z]/i.test(password) || !/\d/.test(password)) return 'Use at least 10 characters, including letters and numbers.'
+  const local = email.split('@')[0]!.toLowerCase()
+  if (password.toLowerCase() === email.toLowerCase() || (local.length >= 4 && password.toLowerCase().includes(local))) return 'Your password must not contain your email address.'
+  return null
+}
 
 export const api = {
   /** Re-render hook for screens: fires after every write (mock DB or backend) and when the tab regains focus. */
@@ -225,8 +242,9 @@ export const api = {
       () => http('/auth/login', json('POST', { email, password })),
       () => {
         const user = db.get().users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())
-        if (!user || password !== seed.DEMO_PASSWORD) throw new ApiError('Email or password is incorrect.', 401)
+        if (!user || password !== (db.get().passwords[user.id] ?? seed.DEMO_PASSWORD)) throw new ApiError('Email or password is incorrect.', 401)
         if (!user.active) throw new ApiError('This account is deactivated. Ask an administrator to reactivate it.', 403)
+        if (db.get().unverified[user.id]) return { kind: 'verify', challengeId: user.id, email: user.email }
         if (user.mfaEnabled) return { kind: 'mfa', challengeId: user.id, email: user.email }
         return { kind: 'session', session: api._start(user) }
       },
@@ -241,12 +259,71 @@ export const api = {
       () => {
         const user = db.get().users.find((u) => u.id === challengeId)
         if (!user || code !== seed.DEMO_MFA_CODE) throw new ApiError('That code is incorrect. Check your authenticator app and try again.', 401)
+        db.update((s) => delete s.unverified[user.id])
         return api._start(user)
       },
     ).then((s) => {
       api._persist(s)
       return s
     }),
+
+  /** Creates a workspace owned by a new administrator. The emailed code (mock: the demo MFA code) confirms the address. */
+  signup: (input: SignupInput) =>
+    call<LoginResult>(
+      () => http('/auth/signup', json('POST', input)),
+      () => {
+        const email = input.email.trim().toLowerCase()
+        const problem = passwordProblem(input.password, email)
+        if (problem) throw new ApiError(problem, 422)
+        if (db.get().users.some((u) => u.email.toLowerCase() === email)) throw new ApiError(`An account already exists for ${email}. Sign in, or use “Forgot password”.`, 409)
+        // The browser mock has a single workspace, so a new sign-up joins it as an administrator.
+        const user: User = { id: uid('u'), name: input.name.trim(), email, role: 'admin', initials: initials(input.name), mfaEnabled: false, kycStatus: 'none', active: true, joinedAt: new Date().toISOString().slice(0, 10) }
+        db.update((s) => {
+          s.users.push(user)
+          s.passwords[user.id] = input.password
+          s.unverified[user.id] = true
+          s.notifications.unshift(notify({ type: 'otp', channel: 'email', title: 'Confirm your email', body: `Your Edocs confirmation code is ${seed.DEMO_MFA_CODE}.` }))
+        })
+        return { kind: 'verify', challengeId: user.id, email }
+      },
+    ),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    call<void>(
+      () => http('/auth/password', json('POST', { currentPassword, newPassword })),
+      () => {
+        const user = me()
+        if (currentPassword !== (db.get().passwords[user.id] ?? seed.DEMO_PASSWORD)) throw new ApiError('Your current password is incorrect.', 422)
+        const problem = passwordProblem(newPassword, user.email)
+        if (problem) throw new ApiError(problem, 422)
+        db.update((s) => {
+          s.passwords[user.id] = newPassword
+          s.auditLogs.push(audit('key-rotation', `Password changed: ${user.email}`))
+        })
+      },
+    ),
+
+  /** Emails a reset code if the account exists; the response is the same either way. */
+  requestPasswordReset: (email: string) =>
+    call<void>(
+      () => http('/auth/password/forgot', json('POST', { email })),
+      () => undefined,
+    ),
+
+  resetPassword: (email: string, code: string, newPassword: string) =>
+    call<void>(
+      () => http('/auth/password/reset', json('POST', { email, code, newPassword })),
+      () => {
+        const user = db.get().users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())
+        if (!user || code !== seed.DEMO_MFA_CODE) throw new ApiError('That code is wrong or has expired. Request a new one and try again.', 422)
+        const problem = passwordProblem(newPassword, user.email)
+        if (problem) throw new ApiError(problem, 422)
+        db.update((s) => {
+          s.passwords[user.id] = newPassword
+          delete s.unverified[user.id]
+        })
+      },
+    ),
 
   /** OAuth2 authorization-code flow. In mock mode the provider "returns" the admin account. */
   loginWithProvider: (provider: 'google' | 'microsoft') => {
@@ -281,11 +358,14 @@ export const api = {
     return session
   },
 
+  // Signing out always succeeds locally; an already-expired token just means there is nothing left to revoke.
   logout: () =>
     call<void>(
-      () => http('/auth/logout', json('POST')),
+      () => (currentSession ? http<void>('/auth/logout', json('POST')) : Promise.resolve()),
       () => undefined,
-    ).finally(() => api._persist(null)),
+    )
+      .catch(() => undefined)
+      .finally(() => api._persist(null)),
 
   _start(user: User): Session {
     return { token: `mock.${user.id}.${Date.now()}`, user }

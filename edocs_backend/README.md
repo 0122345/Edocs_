@@ -56,7 +56,11 @@ cp .env.example .env   # keys and connection settings, imported by application.y
 
 `.env` is git-ignored; OS environment variables override it. With `DEMO_MFA_CODE` empty and `OTP_ECHO_IN_APP=false`, MFA and signing codes are delivered only by email through RabbitMQ, so read them in Mailpit (http://localhost:8025).
 
-### Demo accounts (seeded on first start)
+### Accounts
+
+`POST /auth/signup` creates a workspace whose first user is its administrator; the email is confirmed with a code sent through RabbitMQ before the account can be used. Everyone else is invited by an administrator with a role (`POST /members`), receives a temporary password by email and changes it with `POST /auth/password`. `POST /auth/password/forgot` and `/auth/password/reset` recover a forgotten password with an emailed code.
+
+### Demo accounts (seeded on first start with the dev profile or `SEED_DEMO_DATA=true`)
 
 Password for all accounts: `Demo@2026`.
 
