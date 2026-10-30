@@ -18,7 +18,7 @@
 
     <properties>
         <java.version>21</java.version>
-        <springdoc.version>3.0.0</springdoc.version>
+        <springdoc.version>3.2.0</springdoc.version>
         <owasp-sanitizer.version>20240325.1</owasp-sanitizer.version>
         <embedded-postgres.version>2.2.2</embedded-postgres.version>
         <mongo-java-server.version>1.47.0</mongo-java-server.version>
